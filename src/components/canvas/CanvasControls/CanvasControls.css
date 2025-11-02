@@ -1,0 +1,75 @@
+.canvas-controls {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.95);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.05);
+    backdrop-filter: blur(10px);
+}
+
+.canvas-controls__tools {
+    display: flex;
+    gap: 4px;
+}
+
+.canvas-controls__button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.15s;
+    color: #6b7280;
+}
+
+.canvas-controls__button:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #1f2937;
+}
+
+.canvas-controls__button--active {
+    background: #667eea;
+    color: white;
+}
+
+.canvas-controls__button--active:hover {
+    background: #5568d3;
+}
+
+.canvas-controls__button svg {
+    width: 20px;
+    height: 20px;
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .canvas-controls {
+        background: rgba(30, 30, 30, 0.95);
+    }
+
+    .canvas-controls__button {
+        color: #9ca3af;
+    }
+
+    .canvas-controls__button:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: #e5e7eb;
+    }
+
+    .canvas-controls__button--active {
+        background: #667eea;
+        color: white;
+    }
+}

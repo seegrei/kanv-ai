@@ -1,0 +1,297 @@
+.tiptap-editor {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #1f2937;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    padding: 16px;
+    box-sizing: border-box;
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+}
+
+/* Readonly mode - disable pointer events but allow text selection */
+.tiptap-editor[data-editable='false'] {
+    pointer-events: none;
+}
+
+/* Editable mode - enable interactions */
+.tiptap-editor[data-editable='true'] {
+    pointer-events: auto;
+    cursor: text;
+}
+
+.tiptap-editor:focus {
+    outline: none;
+}
+
+/* Placeholder styles */
+.tiptap-editor p.is-editor-empty:first-child::before {
+    content: attr(data-placeholder);
+    float: left;
+    color: #9ca3af;
+    pointer-events: none;
+    height: 0;
+}
+
+/* Heading styles */
+.tiptap-editor h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+    line-height: 1.3;
+}
+
+.tiptap-editor h1:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 16px 0 12px 0;
+    line-height: 1.3;
+}
+
+.tiptap-editor h2:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 16px 0 12px 0;
+    line-height: 1.3;
+}
+
+.tiptap-editor h3:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 12px 0 8px 0;
+    line-height: 1.3;
+}
+
+.tiptap-editor h4:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor h5 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 12px 0 8px 0;
+    line-height: 1.3;
+}
+
+.tiptap-editor h5:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor h6 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 12px 0 8px 0;
+    line-height: 1.3;
+    color: #6b7280;
+}
+
+.tiptap-editor h6:last-child {
+    margin-bottom: 0;
+}
+
+/* Paragraph styles */
+.tiptap-editor p {
+    margin: 0 0 12px 0;
+}
+
+.tiptap-editor p:last-child {
+    margin-bottom: 0;
+}
+
+/* Text formatting */
+.tiptap-editor strong {
+    font-weight: 700;
+}
+
+.tiptap-editor em {
+    font-style: italic;
+}
+
+/* Code styles */
+.tiptap-editor code {
+    background-color: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+
+.tiptap-editor pre {
+    background-color: #f3f4f6;
+    padding: 12px;
+    border-radius: 6px;
+    overflow: auto;
+    margin: 0 0 12px 0;
+}
+
+.tiptap-editor pre:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor pre code {
+    background-color: transparent;
+    padding: 0;
+    border-radius: 0;
+}
+
+/* List styles */
+.tiptap-editor ul,
+.tiptap-editor ol {
+    margin: 0 0 12px 0;
+    padding-left: 24px;
+}
+
+.tiptap-editor ul:last-child,
+.tiptap-editor ol:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor li {
+    margin: 4px 0;
+}
+
+.tiptap-editor li:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor li p {
+    margin: 0;
+}
+
+/* Blockquote styles */
+.tiptap-editor blockquote {
+    border-left: 3px solid #d1d5db;
+    padding-left: 12px;
+    margin: 0 0 12px 0;
+    color: #6b7280;
+}
+
+.tiptap-editor blockquote:last-child {
+    margin-bottom: 0;
+}
+
+/* Link styles */
+.tiptap-editor a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.tiptap-editor a:hover {
+    text-decoration: underline;
+}
+
+/* Horizontal rule */
+.tiptap-editor hr {
+    border: none;
+    border-top: 1px solid #d1d5db;
+    margin: 16px 0;
+}
+
+.tiptap-editor hr:last-child {
+    margin-bottom: 0;
+}
+
+/* Task list styles */
+.tiptap-editor ul[data-type='taskList'] {
+    list-style: none;
+    padding-left: 0;
+    margin: 0 0 12px 0;
+}
+
+.tiptap-editor ul[data-type='taskList']:last-child {
+    margin-bottom: 0;
+}
+
+.tiptap-editor ul[data-type='taskList'] li {
+    display: flex;
+    align-items: flex-start;
+    margin: 4px 0;
+}
+
+.tiptap-editor ul[data-type='taskList'] li > label {
+    flex: 0 0 auto;
+    margin-right: 8px;
+    user-select: none;
+    cursor: pointer;
+}
+
+.tiptap-editor ul[data-type='taskList'] li > label input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+    margin: 2px 0 0 0;
+}
+
+.tiptap-editor ul[data-type='taskList'] li > div {
+    flex: 1 1 auto;
+}
+
+.tiptap-editor ul[data-type='taskList'] li[data-checked='true'] > div {
+    text-decoration: line-through;
+    color: #6b7280;
+}
+
+.tiptap-editor ul[data-type='taskList'] li > div > p {
+    margin: 0;
+}
+
+/* Nested task lists */
+.tiptap-editor ul[data-type='taskList'] ul[data-type='taskList'] {
+    margin-top: 4px;
+    margin-left: 24px;
+}
+
+/* Remove default margins from first and last elements */
+.tiptap-editor > *:first-child {
+    margin-top: 0;
+}
+
+.tiptap-editor > *:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Hide empty trailing paragraph */
+.tiptap-editor > p:last-child:empty {
+    display: none;
+}
+
+/* Remove margin from nested last children in lists */
+.tiptap-editor ul:last-child,
+.tiptap-editor ol:last-child,
+.tiptap-editor li:last-child {
+    margin-bottom: 0 !important;
+}
+
+/* Disable ProseMirror node selection outline */
+.ProseMirror-selectednode {
+    outline: none !important;
+}
+
+.tiptap-editor .ProseMirror-selectednode {
+    outline: none !important;
+    box-shadow: none !important;
+    border: none !important;
+}
+
+/* Hide selection handles */
+.ProseMirror-gapcursor {
+    display: none !important;
+}

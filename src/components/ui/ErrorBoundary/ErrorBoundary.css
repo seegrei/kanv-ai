@@ -1,0 +1,112 @@
+.error-boundary {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 100vh;
+    padding: 20px;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.error-boundary__content {
+    max-width: 500px;
+    padding: 40px;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    text-align: center;
+}
+
+.error-boundary__title {
+    margin: 0 0 16px 0;
+    font-size: 24px;
+    font-weight: 600;
+    color: #1a202c;
+}
+
+.error-boundary__description {
+    margin: 0 0 32px 0;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #4a5568;
+}
+
+.error-boundary__actions {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    flex-wrap: wrap;
+}
+
+.error-boundary__button {
+    padding: 12px 24px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.error-boundary__button--primary {
+    background: #667eea;
+    color: white;
+}
+
+.error-boundary__button--primary:hover {
+    background: #5568d3;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.error-boundary__button--secondary {
+    background: #e2e8f0;
+    color: #2d3748;
+}
+
+.error-boundary__button--secondary:hover {
+    background: #cbd5e0;
+    transform: translateY(-1px);
+}
+
+.error-boundary__details {
+    margin-top: 32px;
+    padding: 16px;
+    background: #f7fafc;
+    border-radius: 8px;
+    text-align: left;
+}
+
+.error-boundary__summary {
+    font-size: 14px;
+    font-weight: 600;
+    color: #2d3748;
+    cursor: pointer;
+    user-select: none;
+}
+
+.error-boundary__summary:hover {
+    color: #667eea;
+}
+
+.error-boundary__error {
+    margin-top: 16px;
+}
+
+.error-boundary__error strong {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 13px;
+    color: #4a5568;
+}
+
+.error-boundary__error pre {
+    padding: 12px;
+    background: #2d3748;
+    color: #f7fafc;
+    font-size: 12px;
+    line-height: 1.6;
+    border-radius: 6px;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}

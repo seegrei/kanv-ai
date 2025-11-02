@@ -1,0 +1,229 @@
+.text-block {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    cursor: move;
+    background-color: #ffffff;
+    border: 1px solid #dbdfe8;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    box-sizing: border-box;
+    overflow: hidden;
+}
+
+/* Remove all margins from EditorContent wrapper div (div without class) */
+.text-block > div:not([class]) {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+.text-block.selected {
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border-radius: 0;
+    overflow: visible;
+}
+
+.text-block-floating-buttons {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    z-index: 10;
+}
+
+.toggle-view-button {
+    flex-shrink: 0;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 6px;
+    background-color: #ffffff;
+    color: #4b5563;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-view-button:hover {
+    background-color: #f3f4f6;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+}
+
+.toggle-view-button:active {
+    background-color: #e5e7eb;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.toggle-view-button svg {
+    display: block;
+}
+
+.text-block-content {
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: #1f2937;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+    resize: none;
+    box-sizing: border-box;
+    padding: 16px;
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    overflow-y: hidden;
+}
+
+.text-block-content::placeholder {
+    color: #9ca3af;
+}
+
+.text-block-markdown {
+    width: 100%;
+    padding: 16px;
+    color: #1f2937;
+    font-size: 14px;
+    line-height: 1.6;
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+}
+
+.text-block-markdown h1 {
+    font-size: 24px;
+    font-weight: 700;
+    margin: 0 0 16px 0;
+    line-height: 1.3;
+}
+
+.text-block-markdown h2 {
+    font-size: 20px;
+    font-weight: 700;
+    margin: 16px 0 12px 0;
+    line-height: 1.3;
+}
+
+.text-block-markdown h3 {
+    font-size: 18px;
+    font-weight: 700;
+    margin: 16px 0 12px 0;
+    line-height: 1.3;
+}
+
+.text-block-markdown h4 {
+    font-size: 16px;
+    font-weight: 700;
+    margin: 12px 0 8px 0;
+    line-height: 1.3;
+}
+
+.text-block-markdown h5 {
+    font-size: 14px;
+    font-weight: 700;
+    margin: 12px 0 8px 0;
+    line-height: 1.3;
+}
+
+.text-block-markdown h6 {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 12px 0 8px 0;
+    line-height: 1.3;
+    color: #6b7280;
+}
+
+.text-block-markdown p {
+    margin: 0 0 12px 0;
+}
+
+.text-block-markdown strong {
+    font-weight: 700;
+}
+
+.text-block-markdown em {
+    font-style: italic;
+}
+
+.text-block-markdown code {
+    background-color: #f3f4f6;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Courier New', monospace;
+    font-size: 13px;
+}
+
+.text-block-markdown pre {
+    background-color: #f3f4f6;
+    padding: 12px;
+    border-radius: 6px;
+    overflow: hidden;
+    margin: 0 0 12px 0;
+}
+
+.text-block-markdown pre code {
+    background-color: transparent;
+    padding: 0;
+}
+
+.text-block-markdown ul,
+.text-block-markdown ol {
+    margin: 0 0 12px 0;
+    padding-left: 24px;
+}
+
+.text-block-markdown li {
+    margin: 4px 0;
+}
+
+.text-block-markdown blockquote {
+    border-left: 3px solid #d1d5db;
+    padding-left: 12px;
+    margin: 0 0 12px 0;
+    color: #6b7280;
+}
+
+.text-block-markdown a {
+    color: #3b82f6;
+    text-decoration: none;
+}
+
+.text-block-markdown a:hover {
+    text-decoration: underline;
+}
+
+.text-block-markdown hr {
+    border: none;
+    border-top: 1px solid #d1d5db;
+    margin: 16px 0;
+}
+
+.text-block-markdown table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 0 0 12px 0;
+}
+
+.text-block-markdown th,
+.text-block-markdown td {
+    border: 1px solid #d1d5db;
+    padding: 8px;
+    text-align: left;
+}
+
+.text-block-markdown th {
+    background-color: #f3f4f6;
+    font-weight: 700;
+}

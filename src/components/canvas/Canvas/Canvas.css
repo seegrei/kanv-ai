@@ -1,0 +1,200 @@
+.canvas-container {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    overflow: hidden;
+}
+
+.canvas {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    background-color: #ffffff;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.canvas-content {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    transform: translate(var(--canvas-offset-x, 0px), var(--canvas-offset-y, 0px)) scale(var(--canvas-zoom, 1));
+    will-change: transform;
+    z-index: 10;
+    pointer-events: none;
+}
+
+.canvas-content > * {
+    pointer-events: auto;
+}
+
+/* Common styles for all selected blocks */
+.text-block.selected,
+.image-block.selected {
+    outline: 3px solid #007bff;
+    outline-offset: -1.5px;
+}
+
+/* Common styles for all resize handles */
+.text-block .resize-handle,
+.image-block .resize-handle {
+    position: absolute;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #ffffff;
+    border: 2px solid #007bff;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    z-index: 100;
+}
+
+/* Text block resize handles - horizontal cursor only */
+.text-block .resize-handle-tl {
+    top: -5px;
+    left: -5px;
+    cursor: ew-resize;
+}
+
+.text-block .resize-handle-tr {
+    top: -5px;
+    right: -5px;
+    cursor: ew-resize;
+}
+
+.text-block .resize-handle-bl {
+    bottom: -5px;
+    left: -5px;
+    cursor: ew-resize;
+}
+
+.text-block .resize-handle-br {
+    bottom: -5px;
+    right: -5px;
+    cursor: ew-resize;
+}
+
+/* Image block resize handles - diagonal cursors */
+.image-block .resize-handle-tl {
+    top: -5px;
+    left: -5px;
+    cursor: nwse-resize;
+}
+
+.image-block .resize-handle-tr {
+    top: -5px;
+    right: -5px;
+    cursor: nesw-resize;
+}
+
+.image-block .resize-handle-bl {
+    bottom: -5px;
+    left: -5px;
+    cursor: nesw-resize;
+}
+
+.image-block .resize-handle-br {
+    bottom: -5px;
+    right: -5px;
+    cursor: nwse-resize;
+}
+
+.text-block .resize-edge {
+    position: absolute;
+    background: transparent;
+    z-index: 99;
+}
+
+.text-block .resize-edge-t {
+    top: -5px;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.text-block .resize-edge-b {
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.text-block .resize-edge-l {
+    top: 0;
+    left: -5px;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.text-block .resize-edge-r {
+    top: 0;
+    right: -5px;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+/* Disabled resize handles - visible but not interactive */
+.text-block .resize-handle-disabled,
+.image-block .resize-handle-disabled {
+    background-color: #e0e0e0;
+    border-color: #a0a0a0;
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.text-block .resize-edge-disabled,
+.image-block .resize-edge-disabled {
+    cursor: not-allowed;
+    opacity: 0.3;
+}
+
+/* Image block resize edges (all directions) */
+.image-block .resize-edge {
+    position: absolute;
+    background: transparent;
+    z-index: 99;
+}
+
+.image-block .resize-edge-t {
+    top: -5px;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.image-block .resize-edge-b {
+    bottom: -5px;
+    left: 0;
+    width: 100%;
+    height: 8px;
+    cursor: ns-resize;
+}
+
+.image-block .resize-edge-l {
+    top: 0;
+    left: -5px;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.image-block .resize-edge-r {
+    top: 0;
+    right: -5px;
+    width: 8px;
+    height: 100%;
+    cursor: ew-resize;
+}
+
+.text-block.selected,
+.image-block.selected {
+    outline: 2px solid #007bff;
+    outline-offset: -1px;
+}

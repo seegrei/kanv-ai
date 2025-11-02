@@ -1,0 +1,41 @@
+.image-block {
+    position: absolute;
+    display: flex;
+    cursor: move;
+    background-color: transparent;
+    border: none;
+    overflow: visible;
+    box-sizing: border-box;
+}
+
+
+.image-block-floating-buttons {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    gap: 4px;
+    z-index: 10;
+}
+
+.image-block-content {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    display: block;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+.image-block-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #f8f9fa;
+    color: #dbdfe8;
+}
+

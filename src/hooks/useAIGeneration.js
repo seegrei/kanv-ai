@@ -1,0 +1,273 @@
+import { useState, useRef, useEffect, useCallback } from 'react'
+import { createLogger } from '../utils/logger'
+import { eventBus } from '../core/EventBus'
+import { useSettingsStore } from '../store/useSettingsStore'
+import OpenRouterService from '../services/api/OpenRouterService'
+import ImageGenerationService from '../services/api/ImageGenerationService'
+import imageStorageService from '../services/storage/ImageStorageService'
+import { AI, ELEMENT, CANVAS } from '../constants'
+
+const logger = createLogger('useAIGeneration')
+
+/**
+ * Universal AI generation hook for text and image blocks
+ * Manages AI generation state, popup visibility, and generation logic
+ *
+ * @param {Object} config
+ * @param {string} config.type - 'text' or 'image'
+ * @param {string} config.id - Block ID
+ * @param {number} config.x - Block X position
+ * @param {number} config.y - Block Y position
+ * @param {number} config.width - Block width
+ * @param {number} config.height - Block height
+ * @param {string|object} config.currentContent - Current content (HTML for text, imageId for image)
+ * @param {Function} config.onUpdate - Update callback
+ * @param {Function} config.onAddBlockAt - Add block callback
+ * @param {Function} config.onClick - Click callback
+ * @param {boolean} config.isSelected - Is block selected
+ * @param {number} [config.aspectRatio] - Current aspect ratio (for images)
+ * @returns {Object} Generation state and handlers
+ */
+const useAIGeneration = ({
+    type,
+    id,
+    x,
+    y,
+    width,
+    height,
+    currentContent,
+    onUpdate,
+    onAddBlockAt,
+    onClick,
+    isSelected,
+    aspectRatio
+}) => {
+    // AI Generation state
+    const [showPopup, setShowPopup] = useState(false)
+    const [prompt, setPrompt] = useState('')
+    const [selectedModel, setSelectedModel] = useState(
+        type === 'text' ? AI.MODELS[0] : AI.IMAGE_MODELS[0]
+    )
+    const [createNewBlock, setCreateNewBlock] = useState(true)
+    const [isGenerating, setIsGenerating] = useState(false)
+
+    // Refs
+    const popupRef = useRef(null)
+    const serviceRef = useRef(null)
+
+    // Get API key from settings
+    const openRouterApiKey = useSettingsStore((state) => state.openRouterApiKey)
+
+    // Initialize service
+    useEffect(() => {
+        // Get API key from settings or fallback to environment variable
+        const apiKey = openRouterApiKey || AI.API_KEY
+
+        if (apiKey) {
+            serviceRef.current = type === 'text'
+                ? new OpenRouterService(apiKey)
+                : new ImageGenerationService(apiKey)
+        } else {
+            serviceRef.current = null
+        }
+    }, [type, openRouterApiKey])
+
+    // Hide popup when block is deselected (only if not generating)
+    useEffect(() => {
+        if (!isSelected && !isGenerating) {
+            setShowPopup(false)
+        }
+    }, [isSelected, isGenerating])
+
+    // Click outside to close popup (only if not generating)
+    useEffect(() => {
+        if (!showPopup) return
+
+        const handleClickOutside = (e) => {
+            if (!isGenerating && popupRef.current && !popupRef.current.contains(e.target)) {
+                setShowPopup(false)
+            }
+        }
+
+        document.addEventListener('mousedown', handleClickOutside)
+
+        return () => {
+            document.removeEventListener('mousedown', handleClickOutside)
+        }
+    }, [showPopup, isGenerating])
+
+    // Close popup after generation completes if block is not selected
+    useEffect(() => {
+        if (!isGenerating && showPopup && !isSelected) {
+            setShowPopup(false)
+        }
+    }, [isGenerating, showPopup, isSelected])
+
+    // Listen for generate event from toolbar
+    useEffect(() => {
+        const handleGenerateEvent = ({ blockId }) => {
+            if (blockId === id) {
+                setShowPopup(true)
+            }
+        }
+
+        eventBus.on('block:generate', handleGenerateEvent)
+
+        return () => {
+            eventBus.off('block:generate', handleGenerateEvent)
+        }
+    }, [id])
+
+    const handleGenerateClick = useCallback((e) => {
+        e.stopPropagation()
+        onClick(id)
+        setShowPopup(!showPopup)
+    }, [id, onClick, showPopup])
+
+    const handlePromptSubmit = useCallback(async (promptText, model, shouldCreateNewBlock) => {
+        if (!serviceRef.current) {
+            const errorMessage = 'OpenRouter API key is not configured.\n\nPlease open Settings (button in the top-left corner) and add your API key to use AI generation.\n\nYou can get your API key at https://openrouter.ai/keys'
+            logger.error('API key not configured')
+            alert(errorMessage)
+            return
+        }
+
+        setIsGenerating(true)
+        let newBlockId = null
+
+        try {
+            if (shouldCreateNewBlock) {
+                const blockWidth = type === 'text'
+                    ? (width || ELEMENT.TEXT_BLOCK.MIN_WIDTH)
+                    : (width || ELEMENT.IMAGE.DEFAULT_WIDTH)
+                const blockHeight = type === 'text'
+                    ? (height || ELEMENT.TEXT_BLOCK.MIN_HEIGHT)
+                    : (height || ELEMENT.IMAGE.DEFAULT_HEIGHT)
+
+                const popupHeight = popupRef.current ? popupRef.current.offsetHeight : 200
+                const popupX = x + blockWidth + 20
+                const popupY = y
+
+                const newX = popupX
+                const newY = popupY + popupHeight + ELEMENT.TEXT_BLOCK.BLOCK_SPACING
+
+                newBlockId = onAddBlockAt(
+                    newX,
+                    newY,
+                    blockWidth,
+                    blockHeight,
+                    type === 'text' ? 'Generating...' : null,
+                    type === 'text' ? '' : undefined
+                )
+            }
+
+            if (type === 'text') {
+                // Text generation with streaming
+                const generatedContent = await serviceRef.current.generate(
+                    promptText,
+                    model,
+                    currentContent,
+                    (chunk) => {
+                        if (shouldCreateNewBlock && newBlockId) {
+                            onUpdate(newBlockId, { content: chunk })
+                        } else {
+                            onUpdate(id, { content: chunk })
+                        }
+                    }
+                )
+
+                if (shouldCreateNewBlock && newBlockId) {
+                    onUpdate(newBlockId, { content: generatedContent })
+                } else {
+                    onUpdate(id, { content: generatedContent })
+                }
+            } else {
+                // Image generation
+                const generatedImageData = await serviceRef.current.generate(promptText, model, currentContent)
+
+                // Generate unique image ID
+                const newImageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+
+                // Save image to IndexedDB
+                await imageStorageService.saveImage(newImageId, generatedImageData)
+
+                // Load image to get dimensions and calculate aspect ratio
+                const img = new Image()
+                img.onload = () => {
+                    const imgWidth = img.naturalWidth
+                    const imgHeight = img.naturalHeight
+                    const newAspectRatio = imgWidth / imgHeight
+
+                    const currentWidth = width || ELEMENT.IMAGE.DEFAULT_WIDTH
+                    const maxWidth = Math.min(currentWidth, CANVAS.MAX_IMAGE_SIZE)
+                    const newWidth = Math.min(imgWidth, maxWidth)
+                    const newHeight = newWidth / newAspectRatio
+
+                    const targetId = shouldCreateNewBlock ? newBlockId : id
+                    onUpdate(targetId, {
+                        imageId: newImageId,
+                        width: newWidth,
+                        height: newHeight,
+                        aspectRatio: newAspectRatio
+                    })
+                }
+
+                img.onerror = () => {
+                    const targetId = shouldCreateNewBlock ? newBlockId : id
+                    onUpdate(targetId, { imageId: newImageId })
+                }
+
+                img.src = generatedImageData
+            }
+
+            if (!shouldCreateNewBlock) {
+                setShowPopup(false)
+            }
+            setPrompt('')
+        } catch (error) {
+            logger.error(`Error generating ${type}:`, error)
+            alert(`Error generating ${type}: ${error.message}`)
+
+            if (shouldCreateNewBlock && newBlockId) {
+                onUpdate(newBlockId, {
+                    [type === 'text' ? 'content' : 'imageId']: type === 'text' ? 'Error: ' + error.message : null
+                })
+            }
+        } finally {
+            setIsGenerating(false)
+        }
+    }, [type, width, height, x, y, currentContent, id, onAddBlockAt, onUpdate])
+
+    return {
+        // State
+        showPopup,
+        isGenerating,
+
+        // Refs
+        popupRef,
+
+        // Handlers
+        handleGenerateClick,
+
+        // Props for GeneratePopup
+        popupProps: {
+            ref: popupRef,
+            type,
+            blockX: x,
+            blockY: y,
+            blockWidth: type === 'text'
+                ? (width || ELEMENT.TEXT_BLOCK.MIN_WIDTH)
+                : (width || ELEMENT.IMAGE.DEFAULT_WIDTH),
+            prompt,
+            setPrompt,
+            selectedModel,
+            setSelectedModel,
+            createNewBlock,
+            setCreateNewBlock,
+            onSubmit: handlePromptSubmit,
+            isGenerating
+        }
+    }
+}
+
+export default useAIGeneration

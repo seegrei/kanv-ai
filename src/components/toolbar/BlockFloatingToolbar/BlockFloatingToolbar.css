@@ -1,0 +1,93 @@
+.block-floating-toolbar {
+    position: absolute;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 4px;
+    padding: 2px;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    z-index: 500;
+    pointer-events: auto;
+    opacity: 1;
+    transition: opacity 200ms ease-in-out;
+}
+
+.block-toolbar-button {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #64748b;
+    outline: none;
+    padding: 0;
+    flex-shrink: 0;
+}
+
+.block-toolbar-button--with-text {
+    width: auto;
+    padding: 0 12px;
+    gap: 6px;
+}
+
+.block-toolbar-button-text {
+    font-size: 13px;
+    font-weight: 500;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.block-toolbar-button:hover:not(.block-toolbar-button--disabled) {
+    background-color: #f1f5f9;
+    color: #334155;
+}
+
+.block-toolbar-button:active:not(.block-toolbar-button--disabled) {
+    transform: scale(0.95);
+    background-color: #e2e8f0;
+}
+
+.block-toolbar-button:focus {
+    outline: none;
+}
+
+.block-toolbar-button--disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.block-toolbar-button--primary {
+    color: #3b82f6;
+}
+
+.block-toolbar-button--primary:hover:not(.block-toolbar-button--disabled) {
+    background-color: #eff6ff;
+    color: #2563eb;
+}
+
+.block-toolbar-button--primary:active:not(.block-toolbar-button--disabled) {
+    background-color: #dbeafe;
+    color: #1d4ed8;
+}
+
+.block-toolbar-button svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+}
+
+.block-toolbar-separator {
+    width: 1px;
+    height: 20px;
+    background-color: #e2e8f0;
+    margin: 0 2px;
+    flex-shrink: 0;
+}

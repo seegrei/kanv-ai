@@ -1,0 +1,79 @@
+.toolbar {
+    position: fixed;
+    left: 20px;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 7.2px;
+    z-index: 1000;
+    background-color: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10.8px;
+    padding: 7.2px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.toolbar-button {
+    width: 43.2px;
+    height: 43.2px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: transparent;
+    border: none;
+    border-radius: 7.2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    color: #64748b;
+    outline: none;
+}
+
+.toolbar-button:hover {
+    background-color: #f1f5f9;
+    color: #334155;
+}
+
+.toolbar-button:active {
+    transform: scale(0.95);
+}
+
+.toolbar-button:focus {
+    outline: none;
+}
+
+.toolbar-button--active {
+    background-color: #007bff;
+    color: white;
+}
+
+.toolbar-button--active:hover {
+    background-color: #339dff;
+    color: white;
+}
+
+.toolbar-button svg {
+    width: 21.6px;
+    height: 21.6px;
+}
+
+.toolbar-button:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.toolbar-button:disabled:hover {
+    background-color: transparent;
+    color: #64748b;
+    transform: none;
+}
+
+.toolbar-button:disabled:active {
+    transform: none;
+}
+
+.toolbar-separator {
+    height: 1px;
+    background-color: #e2e8f0;
+    margin: 3.6px 0;
+}
