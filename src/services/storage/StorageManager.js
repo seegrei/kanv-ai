@@ -2,6 +2,7 @@ import { createLogger } from '../../utils/logger'
 import { eventBus } from '../../core/EventBus'
 import { useElementsStore } from '../../store/useElementsStore'
 import { CANVAS } from '../../constants'
+import { initializeDefaultData } from '../../utils/initializeDefaultData'
 
 const logger = createLogger('StorageManager')
 
@@ -206,17 +207,19 @@ class StorageManager {
         try {
             const savedData = await this.provider.load()
 
-            if (savedData && savedData.elements) {
+            if (savedData) {
+                // Saved data exists in localStorage - load it
                 // Set flag to prevent auto-save during initial load
                 this.isLoadingInitialData = true
 
-                // Restore elements to store
-                useElementsStore.getState().setElements(savedData.elements)
+                // Restore elements to store (even if empty array)
+                const elements = savedData.elements || []
+                useElementsStore.getState().setElements(elements)
 
                 // Clear flag after loading
                 this.isLoadingInitialData = false
 
-                logger.log('Loaded', savedData.elements.length, 'elements from storage')
+                logger.log('Loaded', elements.length, 'elements from storage')
 
                 // Mark as loaded
                 this.hasLoaded = true
@@ -224,7 +227,31 @@ class StorageManager {
                 // Return canvas state for restoration
                 return savedData.canvasState || null
             } else {
-                logger.log('No saved data found')
+                // No saved data found - first launch, initialize with default data
+                logger.log('No saved data found, initializing default data')
+
+                const defaultData = await initializeDefaultData()
+
+                if (defaultData && defaultData.elements) {
+                    // Set flag to prevent auto-save during initial load
+                    this.isLoadingInitialData = true
+
+                    // Load default elements to store
+                    useElementsStore.getState().setElements(defaultData.elements)
+
+                    // Clear flag after loading
+                    this.isLoadingInitialData = false
+
+                    logger.log('Initialized with', defaultData.elements.length, 'default elements')
+
+                    // Mark as loaded
+                    this.hasLoaded = true
+
+                    // Return canvas state for restoration
+                    return defaultData.canvasState || null
+                }
+
+                // If initialization failed, just mark as loaded
                 this.hasLoaded = true
                 return null
             }

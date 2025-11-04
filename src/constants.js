@@ -67,17 +67,10 @@ export const AI = {
         'openai/gpt-5',
         'openai/gpt-5-mini',
         'openai/gpt-5-pro',
-        'openai/gpt-5-codex',
-        'openai/gpt-5-chat',
-        'openai/gpt-5-nano',
         'openai/gpt-4.1',
         'openai/gpt-4.1-mini',
-        'openai/gpt-4.1-nano',
         'openai/gpt-4o',
         'openai/gpt-4o-mini',
-        'openai/o3',
-        'openai/o3-pro',
-        'openai/o3-deep-research',
 
         'anthropic/claude-sonnet-4.5',
         'anthropic/claude-haiku-4.5',
@@ -104,11 +97,17 @@ export const AI = {
 export const STORAGE = {
     KEYS: {
         SETTINGS: 'kanv_ai_settings',
-        CANVAS_DATA: 'kanv_ai_canvas_data'
+        CANVAS_DATA: 'kanv_ai_canvas_data',
+        STATISTICS: 'kanv_ai_statistics'
     },
     INDEXED_DB: {
         DB_NAME: 'kanv_ai',
         IMAGES_STORE_NAME: 'images',
         DB_VERSION: 1
     }
+}
+
+export const STATISTICS = {
+    HISTORY_DAYS: 30,
+    UPDATE_DEBOUNCE: 500
 }

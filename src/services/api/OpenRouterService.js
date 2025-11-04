@@ -39,20 +39,27 @@ class OpenRouterService extends BaseAPIService {
                     messages: messages,
                     temperature: 0.7,
                     max_tokens: 8000,
-                    stream: true
+                    stream: true,
+                    usage: { include: true }
                 })
             })
 
-            const generatedText = await this.processStreamResponse(response, onChunk)
+            const result = await this.processStreamResponse(response, onChunk)
+            const generatedText = result.text
 
-            // Track token usage (estimated for streaming)
-            this.tokenTracker.track({
-                usage: {
-                    total_tokens: this.estimateTokens(prompt + currentContent + generatedText),
-                    prompt_tokens: this.estimateTokens(prompt + currentContent),
-                    completion_tokens: this.estimateTokens(generatedText)
-                }
-            }, model, 'text')
+            // Track token usage from actual API response or use estimates
+            if (result.usage) {
+                this.tokenTracker.track({ usage: result.usage }, model, 'text')
+            } else {
+                // Fallback to estimated token usage if usage data not available
+                this.tokenTracker.track({
+                    usage: {
+                        total_tokens: this.estimateTokens(prompt + currentContent + generatedText),
+                        prompt_tokens: this.estimateTokens(prompt + currentContent),
+                        completion_tokens: this.estimateTokens(generatedText)
+                    }
+                }, model, 'text')
+            }
 
             // Cache result for non-streaming requests
             if (!onChunk) {
@@ -102,12 +109,13 @@ class OpenRouterService extends BaseAPIService {
      * Process streaming response
      * @param {Response} response - Fetch response
      * @param {function} onChunk - Callback for chunks
-     * @returns {Promise<string>} Complete generated text
+     * @returns {Promise<object>} Object with generated text and usage data
      */
     async processStreamResponse(response, onChunk) {
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
         let generatedText = ''
+        let usageData = null
 
         while (true) {
             const { done, value } = await reader.read()
@@ -131,6 +139,11 @@ class OpenRouterService extends BaseAPIService {
                                 onChunk(generatedText)
                             }
                         }
+
+                        // Capture usage data from the last chunk
+                        if (parsed.usage) {
+                            usageData = parsed.usage
+                        }
                     } catch (e) {
                         // Skip invalid JSON lines
                         logger.warn('Failed to parse SSE data:', e)
@@ -143,7 +156,7 @@ class OpenRouterService extends BaseAPIService {
             throw new Error('No content generated. The model may have returned an empty response.')
         }
 
-        return generatedText
+        return { text: generatedText, usage: usageData }
     }
 
     /**

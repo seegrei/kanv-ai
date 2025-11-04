@@ -112,6 +112,11 @@ const ImageBlock = memo(({ id, x, y, width, height, imageId, aspectRatio, isSele
                         )}
                     </div>
                 )}
+                {isSelected && !isMultipleSelected && (
+                    <div className='image-block-dimensions'>
+                        {Math.round(displayWidth)}x{Math.round(displayHeight)}
+                    </div>
+                )}
             </Block>
             {generation.showPopup && (
                 <GeneratePopup {...generation.popupProps} />

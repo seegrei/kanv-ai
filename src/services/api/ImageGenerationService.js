@@ -52,7 +52,8 @@ class ImageGenerationService extends BaseAPIService {
                 method: 'POST',
                 body: JSON.stringify({
                     model: model,
-                    messages: messages
+                    messages: messages,
+                    usage: { include: true }
                 })
             })
 

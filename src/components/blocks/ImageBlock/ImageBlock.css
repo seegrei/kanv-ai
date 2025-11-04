@@ -39,3 +39,22 @@
     color: #dbdfe8;
 }
 
+.image-block-dimensions {
+    position: absolute;
+    bottom: -28px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 4px 8px;
+    background-color: #007bff;
+    color: #fff;
+    font-size: 12px;
+    font-family: monospace;
+    border-radius: 6px;
+    pointer-events: none;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    z-index: 10;
+}
+

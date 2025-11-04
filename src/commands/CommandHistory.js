@@ -82,6 +82,25 @@ class CommandHistory {
     getAllCommands() {
         return this.history;
     }
+
+    // Add command to history without executing it
+    // Used when the command action has already been performed
+    addWithoutExecute(command) {
+        if (this.isExecuting) return;
+
+        // Remove "future" commands
+        this.history = this.history.slice(0, this.current + 1);
+
+        // Add command to history
+        this.history.push(command);
+        this.current++;
+
+        // Limit history size
+        if (this.history.length > this.maxSize) {
+            this.history.shift();
+            this.current--;
+        }
+    }
 }
 
 export default CommandHistory;

@@ -1,5 +1,6 @@
 import { memo, useState, useEffect, useCallback } from 'react'
 import { useSettingsStore } from '../../../store/useSettingsStore'
+import { useUsageStatsStore } from '../../../store/useUsageStatsStore'
 import { createLogger } from '../../../utils/logger'
 import packageJson from '../../../../package.json'
 import './SettingsDialog.css'
@@ -7,7 +8,8 @@ import './SettingsDialog.css'
 const logger = createLogger('SettingsDialog')
 
 const SECTIONS = [
-    { id: 'api', label: 'API Keys' }
+    { id: 'api', label: 'API Keys' },
+    { id: 'usage', label: 'Usage Statistics' }
 ]
 
 const SettingsDialog = memo(() => {
@@ -18,18 +20,35 @@ const SettingsDialog = memo(() => {
         setOpenRouterApiKey
     } = useSettingsStore()
 
+    const {
+        showStatistics,
+        setShowStatistics,
+        getAllData,
+        clearStatistics
+    } = useUsageStatsStore()
+
     const [activeSection, setActiveSection] = useState('api')
     const [apiKeyInput, setApiKeyInput] = useState('')
+    const [showStatsInput, setShowStatsInput] = useState(true)
 
     // Initialize input with current value
     useEffect(() => {
         setApiKeyInput(openRouterApiKey)
-    }, [openRouterApiKey, isSettingsOpen])
+        setShowStatsInput(showStatistics)
+    }, [openRouterApiKey, showStatistics, isSettingsOpen])
 
     const handleCancel = useCallback(() => {
         setApiKeyInput(openRouterApiKey)
+        setShowStatsInput(showStatistics)
         closeSettings()
-    }, [openRouterApiKey, closeSettings])
+    }, [openRouterApiKey, showStatistics, closeSettings])
+
+    const handleClearStatistics = useCallback(() => {
+        if (window.confirm('Are you sure you want to clear all usage statistics? This action cannot be undone.')) {
+            clearStatistics()
+            logger.log('Statistics cleared')
+        }
+    }, [clearStatistics])
 
     // Handle Escape key to close dialog
     useEffect(() => {
@@ -60,6 +79,7 @@ const SettingsDialog = memo(() => {
 
     const handleSave = () => {
         setOpenRouterApiKey(apiKeyInput)
+        setShowStatistics(showStatsInput)
         logger.log('Settings saved')
         closeSettings()
     }
@@ -105,6 +125,118 @@ const SettingsDialog = memo(() => {
                                 </svg>
                                 Your API key is stored locally in your browser
                             </p>
+                        </div>
+                    </div>
+                )
+            case 'usage':
+                const allData = getAllData()
+                const dates = Object.keys(allData).sort().reverse()
+
+                // Format tokens with k suffix for thousands
+                const formatTokens = (tokens) => {
+                    if (tokens >= 1000) {
+                        return `${(tokens / 1000).toFixed(1)}k`
+                    }
+                    return tokens.toString()
+                }
+
+                // Calculate total statistics
+                let totalTokens = 0
+                let totalCost = 0
+                let totalRequests = 0
+
+                for (const date in allData) {
+                    for (const model in allData[date]) {
+                        totalTokens += allData[date][model].tokens
+                        totalCost += allData[date][model].cost
+                        totalRequests += allData[date][model].requests
+                    }
+                }
+
+                return (
+                    <div className='settings-content'>
+                        <h2 className='settings-content-title'>Usage Statistics</h2>
+                        <p className='settings-content-description'>
+                            Track your AI generation usage and costs
+                        </p>
+
+                        <div className='settings-field'>
+                            <label className='settings-checkbox-label'>
+                                <input
+                                    type='checkbox'
+                                    checked={showStatsInput}
+                                    onChange={(e) => setShowStatsInput(e.target.checked)}
+                                    className='settings-checkbox'
+                                />
+                                <span>Show usage statistics in bottom-left corner</span>
+                            </label>
+                        </div>
+
+                        <div className='settings-stats-summary'>
+                            <h3 className='settings-stats-title'>Total Usage</h3>
+                            <div className='settings-stats-grid'>
+                                <div className='settings-stat-item'>
+                                    <div className='settings-stat-label'>Total Tokens</div>
+                                    <div className='settings-stat-value'>{formatTokens(totalTokens)}</div>
+                                </div>
+                                <div className='settings-stat-item'>
+                                    <div className='settings-stat-label'>Total Cost</div>
+                                    <div className='settings-stat-value'>${totalCost.toFixed(4)}</div>
+                                </div>
+                                <div className='settings-stat-item'>
+                                    <div className='settings-stat-label'>Total Requests</div>
+                                    <div className='settings-stat-value'>{totalRequests}</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {dates.length > 0 && (
+                            <div className='settings-stats-history'>
+                                <h3 className='settings-stats-title'>History (Last 30 Days)</h3>
+                                <div className='settings-stats-table'>
+                                    {dates.map(date => {
+                                        const dayData = allData[date]
+                                        let dayTokens = 0
+                                        let dayCost = 0
+                                        let dayRequests = 0
+
+                                        for (const model in dayData) {
+                                            dayTokens += dayData[model].tokens
+                                            dayCost += dayData[model].cost
+                                            dayRequests += dayData[model].requests
+                                        }
+
+                                        return (
+                                            <div key={date} className='settings-stats-day'>
+                                                <div className='settings-stats-day-header'>
+                                                    <strong>{date}</strong>
+                                                    <span>{formatTokens(dayTokens)} tokens / ${dayCost.toFixed(4)}</span>
+                                                </div>
+                                                <div className='settings-stats-models'>
+                                                    {Object.entries(dayData).map(([model, stats]) => (
+                                                        <div key={model} className='settings-stats-model'>
+                                                            <span className='settings-stats-model-name'>{model}</span>
+                                                            <span className='settings-stats-model-stats'>
+                                                                {formatTokens(stats.tokens)} tokens, ${stats.cost.toFixed(4)}, {stats.requests} requests
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        )}
+
+                        <br/>
+                        <div className='settings-field'>
+                            <button
+                                className='settings-action-button settings-action-button-danger'
+                                onClick={handleClearStatistics}
+                            >
+                                Clear All Statistics
+                            </button>
                         </div>
                     </div>
                 )
@@ -178,22 +310,22 @@ const SettingsDialog = memo(() => {
 
                     <div className='settings-main'>
                         {renderContent()}
-
-                        <div className='settings-actions'>
-                            <button
-                                className='settings-action-button settings-action-button-secondary'
-                                onClick={handleCancel}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                className='settings-action-button settings-action-button-primary'
-                                onClick={handleSave}
-                            >
-                                Save
-                            </button>
-                        </div>
                     </div>
+                </div>
+
+                <div className='settings-actions'>
+                    <button
+                        className='settings-action-button settings-action-button-secondary'
+                        onClick={handleCancel}
+                    >
+                        Cancel
+                    </button>
+                    <button
+                        className='settings-action-button settings-action-button-primary'
+                        onClick={handleSave}
+                    >
+                        Save
+                    </button>
                 </div>
             </div>
         </div>

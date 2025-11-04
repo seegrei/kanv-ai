@@ -1,3 +1,5 @@
+import { useUsageStatsStore } from '../../store/useUsageStatsStore'
+
 /**
  * Tracks token usage for API requests
  * Helps monitor and optimize API costs
@@ -13,6 +15,14 @@ class TokenTracker {
 
         this.history = []
         this.maxHistorySize = 100
+    }
+
+    /**
+     * Get current date in YYYY-MM-DD format
+     */
+    getCurrentDate() {
+        const now = new Date()
+        return now.toISOString().split('T')[0]
     }
 
     /**
@@ -46,6 +56,11 @@ class TokenTracker {
                 completionTokens: usage.completionTokens || 0
             }
         })
+
+        // Save to usage statistics store (daily breakdown by model)
+        const currentDate = this.getCurrentDate()
+        const statsStore = useUsageStatsStore.getState()
+        statsStore.addUsage(currentDate, model, usage.totalTokens || 0, usage.cost || 0)
     }
 
     /**
@@ -57,21 +72,39 @@ class TokenTracker {
     extractUsage(response) {
         // OpenRouter format
         if (response?.usage) {
-            return {
+            const extracted = {
                 totalTokens: response.usage.total_tokens || 0,
                 promptTokens: response.usage.prompt_tokens || 0,
                 completionTokens: response.usage.completion_tokens || 0
             }
+
+            // Try to extract cost if available (OpenRouter may provide this)
+            if (response.usage.cost !== undefined) {
+                extracted.cost = response.usage.cost
+            } else if (response.usage.total_cost !== undefined) {
+                extracted.cost = response.usage.total_cost
+            }
+
+            return extracted
         }
 
         // Alternative format
         if (response?.choices?.[0]?.usage) {
             const usage = response.choices[0].usage
-            return {
+            const extracted = {
                 totalTokens: usage.total_tokens || 0,
                 promptTokens: usage.prompt_tokens || 0,
                 completionTokens: usage.completion_tokens || 0
             }
+
+            // Try to extract cost if available
+            if (usage.cost !== undefined) {
+                extracted.cost = usage.cost
+            } else if (usage.total_cost !== undefined) {
+                extracted.cost = usage.total_cost
+            }
+
+            return extracted
         }
 
         return null

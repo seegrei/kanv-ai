@@ -300,6 +300,32 @@ export const useCanvasActions = create((set) => ({
 
         logger.log('Image block created at position:', newBlock.id, { x, y, width, height });
         return newBlock.id;
+    },
+
+    // Create block without command (for AI generation before streaming completes)
+    createBlockWithoutCommand: (type, x, y, width, height, data = {}) => {
+        const newBlock = BlockFactory.createWithSize(type, x, y, width, height, data);
+        useElementsStore.getState().addElement(newBlock);
+        logger.log('Block created without command:', newBlock.id, { type, x, y, width, height });
+        return newBlock.id;
+    },
+
+    // Add command for already created block (after AI generation completes)
+    addBlockToHistory: (blockId) => {
+        const block = useElementsStore.getState().getElementById(blockId);
+        if (!block) {
+            logger.error('Block not found:', blockId);
+            return;
+        }
+        const command = new CreateBlockCommand(block);
+        useHistoryStore.getState().addCommandToHistory(command);
+        logger.log('Block added to history:', blockId);
+    },
+
+    // Delete block without command (for cleanup on error)
+    deleteBlockWithoutCommand: (blockId) => {
+        useElementsStore.getState().deleteElement(blockId);
+        logger.log('Block deleted without command:', blockId);
     }
 }));
 

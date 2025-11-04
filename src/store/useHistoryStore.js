@@ -25,6 +25,15 @@ export const useHistoryStore = create((set, get) => ({
         });
     },
 
+    // Add command to history without executing (for already performed actions)
+    addCommandToHistory: (command) => {
+        commandHistory.addWithoutExecute(command);
+        set({
+            canUndo: commandHistory.canUndo(),
+            canRedo: commandHistory.canRedo()
+        });
+    },
+
     // Undo last command
     undo: () => {
         commandHistory.undo();

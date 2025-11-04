@@ -14,7 +14,8 @@ class BlockFactory {
      */
     static generateId() {
         this.idCounter++;
-        return `block_${Date.now()}_${this.idCounter}`;
+        const random = Math.random().toString(36).substring(2, 9);
+        return `block_${Date.now()}_${this.idCounter}_${random}`;
     }
 
     /**

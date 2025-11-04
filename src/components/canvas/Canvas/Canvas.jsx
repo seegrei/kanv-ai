@@ -13,6 +13,7 @@ import Toolbar from '../../toolbar/Toolbar/Toolbar'
 import SettingsButton from '../../ui/SettingsButton/SettingsButton'
 import SettingsDialog from '../../dialogs/SettingsDialog/SettingsDialog'
 import SelectionBox from '../../blocks/SelectionBox/SelectionBox'
+import UsageStatsDisplay from '../../ui/UsageStatsDisplay/UsageStatsDisplay'
 import BlockFloatingToolbar from '../../toolbar/BlockFloatingToolbar/BlockFloatingToolbar'
 import CanvasRenderer from '../CanvasRenderer/CanvasRenderer'
 import CanvasKeyboardHandler from '../CanvasKeyboardHandler/CanvasKeyboardHandler'
@@ -342,6 +343,7 @@ const Canvas = () => {
         <div className='canvas-container' onContextMenu={handleContextMenu}>
             <SettingsButton />
             <SettingsDialog />
+            <UsageStatsDisplay />
             <Toolbar onAddTextBlock={handleAddTextBlock} onAddImageBlock={handleAddImageBlock} />
             <CanvasKeyboardHandler
                 offsetRef={offsetRef}

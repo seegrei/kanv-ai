@@ -47,6 +47,15 @@ const GeneratePopup = memo(forwardRef(({
         }
     }
 
+    const handleKeyDown = (e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+            e.preventDefault()
+            if (prompt.trim() && !isGenerating) {
+                onSubmit(prompt, selectedModel, createNewBlock)
+            }
+        }
+    }
+
     const popupStyle = {
         left: `${blockX + blockWidth + 20}px`,
         top: `${blockY}px`
@@ -68,6 +77,7 @@ const GeneratePopup = memo(forwardRef(({
                     className='generate-popup-textarea'
                     value={prompt}
                     onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder='Enter your prompt...'
                     rows={4}
                     disabled={isGenerating}
