@@ -2,8 +2,11 @@ import { blockActionRegistry } from '../core/BlockActionRegistry'
 import { eventBus } from '../core/EventBus'
 import LightningIcon from '../components/icons/LightningIcon/LightningIcon'
 import DownloadIcon from '../components/icons/DownloadIcon/DownloadIcon'
-import { downloadAsMarkdown } from '../utils/htmlToMarkdown'
-import { downloadImage } from '../utils/downloadImage'
+import { downloadAsMarkdown } from '../utils/export/htmlToMarkdown'
+import { downloadImage } from '../utils/export/downloadImage'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('blockActions')
 
 /**
  * Initialize block actions
@@ -60,7 +63,7 @@ export const initializeBlockActions = () => {
         }
     })
 
-    console.log('Block actions initialized')
+    logger.log('Block actions initialized')
 }
 
 export default initializeBlockActions

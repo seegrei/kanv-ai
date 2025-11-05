@@ -4,16 +4,16 @@ import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
 import TaskList from '@tiptap/extension-task-list'
 import TaskItem from '@tiptap/extension-task-item'
-import SlashCommands from '../../../extensions/SlashCommands'
-import CustomDocument from '../../../extensions/CustomDocument'
-import { getSuggestionItems, renderItems } from '../../../features/slashCommands/SlashCommandsSuggestion/SlashCommandsSuggestion'
+import SlashCommands from '../../../lib/tiptap/SlashCommands'
+import CustomDocument from '../../../lib/tiptap/CustomDocument'
+import { getSuggestionItems, renderItems } from '../../../lib/tiptap/SlashCommandsSuggestion/SlashCommandsSuggestion'
 import Block from '../Block/Block'
 import GeneratePopup from '../../dialogs/GeneratePopup/GeneratePopup'
 import useBlock from '../../../hooks/useBlock'
 import useAIGeneration from '../../../hooks/useAIGeneration'
 import useSelectionStore from '../../../store/useSelectionStore'
 import useHistoryStore from '../../../store/useHistoryStore'
-import { ELEMENT, CANVAS } from '../../../constants'
+import { ELEMENT } from '../../../constants'
 import UpdateContentCommand from '../../../commands/UpdateContentCommand'
 import './TextBlock.css'
 import './TiptapEditor.css'
@@ -203,6 +203,11 @@ const TextBlock = memo(({ id, x, y, width, height, content, isSelected, isMultip
             if (editorElement) {
                 editorElement.setAttribute('data-editable', isEditMode ? 'true' : 'false')
             }
+
+            // Clear text selection when exiting edit mode
+            if (!isEditMode) {
+                tiptapEditorRef.current.commands.blur()
+            }
         }
     }, [isEditMode])
 
@@ -367,7 +372,7 @@ const TextBlock = memo(({ id, x, y, width, height, content, isSelected, isMultip
                 resizeEdges={['l', 'r', 'tl', 'tr', 'bl', 'br']}
                 className=''
                 style={{
-                    zIndex: block.isDragging ? CANVAS.Z_INDEX.DRAGGING : (isSelected ? CANVAS.Z_INDEX.SELECTED : CANVAS.Z_INDEX.DEFAULT)
+                    zIndex: block.isDragging ? 'var(--z-block-dragging)' : (isSelected ? 'var(--z-block-selected)' : 'var(--z-block-default)')
                 }}
             >
                 {isEditorReady && tiptapEditorRef.current && (

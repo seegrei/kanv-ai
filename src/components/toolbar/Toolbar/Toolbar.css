@@ -6,7 +6,7 @@
     display: flex;
     flex-direction: column;
     gap: 7.2px;
-    z-index: 1000;
+    z-index: var(--z-ui);
     background-color: #ffffff;
     border: 1px solid #e2e8f0;
     border-radius: 10.8px;

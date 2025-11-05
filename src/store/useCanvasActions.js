@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { createLogger } from '../utils/logger';
-import imageStorageService from '../services/storage/ImageStorageService';
+import { storageManager } from '../services/storage';
 import { useElementsStore } from './useElementsStore';
 import { useSelectionStore } from './useSelectionStore';
 import { useClipboardStore } from './useClipboardStore';
@@ -64,10 +64,10 @@ export const useCanvasActions = create((set) => ({
                 const imageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
                 // Save image to IndexedDB
-                await imageStorageService.saveImage(imageId, imageData);
+                await storageManager.saveImage(imageId, imageData);
 
                 const newElement = {
-                    id: Date.now(),
+                    id: BlockFactory.generateId(),
                     type: 'image',
                     x: viewportCenterX - blockWidth / 2,
                     y: viewportCenterY - blockHeight / 2,
@@ -155,7 +155,7 @@ export const useCanvasActions = create((set) => ({
         const newElements = await Promise.all(clipboard.map(async (el) => {
             const newElement = {
                 ...el,
-                id: Date.now() + Math.random(),
+                id: BlockFactory.generateId(),
                 x: el.x + offsetX,
                 y: el.y + offsetY
             };
@@ -163,7 +163,7 @@ export const useCanvasActions = create((set) => ({
             // If element is an image with imageId, clone the image in IndexedDB
             if (el.type === 'image' && el.imageId) {
                 const newImageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-                await imageStorageService.cloneImage(el.imageId, newImageId);
+                await storageManager.cloneImage(el.imageId, newImageId);
                 newElement.imageId = newImageId;
             }
 
@@ -196,7 +196,7 @@ export const useCanvasActions = create((set) => ({
         const duplicatedBlocks = await Promise.all(selectedElements.map(async (el) => {
             const newElement = {
                 ...el,
-                id: Date.now() + Math.random(),
+                id: BlockFactory.generateId(),
                 x: el.x + offset,
                 y: el.y + offset
             };
@@ -204,7 +204,7 @@ export const useCanvasActions = create((set) => ({
             // If element is an image with imageId, clone the image in IndexedDB
             if (el.type === 'image' && el.imageId) {
                 const newImageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
-                await imageStorageService.cloneImage(el.imageId, newImageId);
+                await storageManager.cloneImage(el.imageId, newImageId);
                 newElement.imageId = newImageId;
             }
 

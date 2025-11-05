@@ -1,10 +1,9 @@
 import { create } from 'zustand'
 import { createLogger } from '../utils/logger'
-import { STORAGE, STATISTICS } from '../constants'
+import { storageManager } from '../services/storage'
+import { STATISTICS } from '../constants'
 
 const logger = createLogger('useUsageStatsStore')
-
-const STORAGE_KEY = STORAGE.KEYS.STATISTICS
 
 // Get current date in YYYY-MM-DD format
 const getCurrentDate = () => {
@@ -12,26 +11,22 @@ const getCurrentDate = () => {
     return now.toISOString().split('T')[0]
 }
 
-// Load statistics from localStorage
-const loadStatistics = () => {
-    try {
-        const stored = localStorage.getItem(STORAGE_KEY)
-        if (stored) {
-            return JSON.parse(stored)
-        }
-    } catch (error) {
-        logger.error('Failed to load statistics from localStorage:', error)
-    }
-    return { data: {}, showStatistics: true }
-}
+// Debounce timer for saving
+let saveDebounceTimer = null
 
-// Save statistics to localStorage
-const saveStatistics = (statistics) => {
-    try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(statistics))
-    } catch (error) {
-        logger.error('Failed to save statistics to localStorage:', error)
+// Save statistics to IndexedDB with debounce
+const debouncedSaveDailyStats = (date, stats) => {
+    if (saveDebounceTimer) {
+        clearTimeout(saveDebounceTimer)
     }
+
+    saveDebounceTimer = setTimeout(async () => {
+        try {
+            await storageManager.saveDailyStats(date, stats)
+        } catch (error) {
+            logger.error('Failed to save statistics to IndexedDB:', error)
+        }
+    }, STATISTICS.UPDATE_DEBOUNCE)
 }
 
 // Cleanup old data (keep only last N days)
@@ -51,26 +46,58 @@ const cleanupOldData = (data) => {
 
 /**
  * Usage Statistics Store
- * Manages token/money usage statistics with localStorage persistence
+ * Manages token/money usage statistics with IndexedDB persistence
  *
  * Data structure:
  * {
- *   data: {
- *     "2025-11-04": {
- *       "openai/gpt-4o": { tokens: 1500, cost: 0.045, requests: 3 },
- *       "anthropic/claude-sonnet-4.5": { tokens: 2000, cost: 0.060, requests: 2 }
- *     }
+ *   "2025-11-04": {
+ *     "openai/gpt-4o": { tokens: 1500, cost: 0.045, requests: 3 },
+ *     "anthropic/claude-sonnet-4.5": { tokens: 2000, cost: 0.060, requests: 2 }
  *   },
- *   showStatistics: true
+ *   "2025-11-05": { ... }
  * }
  */
 export const useUsageStatsStore = create((set, get) => {
-    const initialData = loadStatistics()
-
     return {
         // Statistics data
-        data: initialData.data || {},
-        showStatistics: initialData.showStatistics !== false,
+        data: {},
+        _isLoaded: false,
+        _isLoading: false,
+
+        // Load statistics from IndexedDB
+        loadStatistics: async () => {
+            const state = get()
+
+            // Skip if already loaded or currently loading
+            if (state._isLoaded) {
+                logger.log('Statistics already loaded, skipping')
+                return
+            }
+            if (state._isLoading) {
+                logger.log('Statistics are currently loading, skipping duplicate request')
+                return
+            }
+
+            // Mark as loading
+            set({ _isLoading: true })
+
+            try {
+                const statistics = await storageManager.loadAllStatistics()
+                if (statistics && Object.keys(statistics).length > 0) {
+                    set({
+                        data: statistics,
+                        _isLoaded: true,
+                        _isLoading: false
+                    })
+                    logger.log('Statistics loaded from IndexedDB')
+                } else {
+                    set({ _isLoaded: true, _isLoading: false })
+                }
+            } catch (error) {
+                logger.error('Failed to load statistics from IndexedDB:', error)
+                set({ _isLoaded: true, _isLoading: false })
+            }
+        },
 
         // Add usage for a specific date and model
         addUsage: (date, model, tokens, cost = 0) => {
@@ -96,7 +123,18 @@ export const useUsageStatsStore = create((set, get) => {
             const cleanedData = cleanupOldData(newData)
 
             set({ data: cleanedData })
-            saveStatistics({ data: cleanedData, showStatistics: state.showStatistics })
+
+            // Save only the updated date
+            debouncedSaveDailyStats(date, cleanedData[date])
+
+            // Delete old dates from IndexedDB
+            for (const d in state.data) {
+                if (!cleanedData[d]) {
+                    storageManager.deleteDailyStats(d).catch(error => {
+                        logger.error(`Failed to delete old statistics for ${d}:`, error)
+                    })
+                }
+            }
 
             logger.log(`Added usage for ${model}: ${tokens} tokens, $${cost.toFixed(4)}`)
         },
@@ -135,20 +173,22 @@ export const useUsageStatsStore = create((set, get) => {
             return get().data
         },
 
-        // Toggle statistics display
-        setShowStatistics: (show) => {
-            const state = get()
-            set({ showStatistics: show })
-            saveStatistics({ data: state.data, showStatistics: show })
-            logger.log(`Statistics display ${show ? 'enabled' : 'disabled'}`)
-        },
-
         // Clear all statistics
-        clearStatistics: () => {
+        clearStatistics: async () => {
             const state = get()
+            const dates = Object.keys(state.data)
+
             set({ data: {} })
-            saveStatistics({ data: {}, showStatistics: state.showStatistics })
-            logger.log('Statistics cleared')
+
+            // Delete all dates from IndexedDB
+            try {
+                await Promise.all(
+                    dates.map(date => storageManager.deleteDailyStats(date))
+                )
+                logger.log('Statistics cleared')
+            } catch (error) {
+                logger.error('Failed to clear statistics:', error)
+            }
         }
     }
 })

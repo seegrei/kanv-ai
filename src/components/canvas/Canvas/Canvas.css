@@ -23,7 +23,7 @@
     transform-origin: 0 0;
     transform: translate(var(--canvas-offset-x, 0px), var(--canvas-offset-y, 0px)) scale(var(--canvas-zoom, 1));
     will-change: transform;
-    z-index: 10;
+    z-index: var(--z-content);
     pointer-events: none;
 }
 
@@ -48,7 +48,7 @@
     background-color: #ffffff;
     border: 2px solid #007bff;
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    z-index: 100;
+    z-index: var(--z-block-resize-handle);
 }
 
 /* Text block resize handles - horizontal cursor only */
@@ -104,7 +104,7 @@
 .text-block .resize-edge {
     position: absolute;
     background: transparent;
-    z-index: 99;
+    z-index: var(--z-block-resize-edge);
 }
 
 .text-block .resize-edge-t {
@@ -158,7 +158,7 @@
 .image-block .resize-edge {
     position: absolute;
     background: transparent;
-    z-index: 99;
+    z-index: var(--z-block-resize-edge);
 }
 
 .image-block .resize-edge-t {

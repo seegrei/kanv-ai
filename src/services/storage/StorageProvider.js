@@ -1,43 +1,185 @@
 /**
  * Abstract Storage Provider
- * Base class for different storage implementations (local, cloud, etc.)
+ * Base class for different storage implementations (IndexedDB, cloud, etc.)
  */
 class StorageProvider {
+    // Canvas data methods
+
     /**
-     * Save canvas data
-     * @param {Object} data - Data to save
-     * @param {Array} data.elements - Array of block elements
-     * @param {Object} data.canvasState - Canvas state (offset, zoom)
-     * @param {number} data.timestamp - Timestamp
-     * @param {string} data.version - Data version
+     * Save blocks
+     * @param {Array} blocks - Array of block elements
      * @returns {Promise<Object>} { success: boolean, error?: string }
      */
-    async save(data) {
-        throw new Error('save() must be implemented by subclass')
+    async saveBlocks(blocks) {
+        throw new Error('saveBlocks() must be implemented by subclass')
     }
 
     /**
-     * Load canvas data
-     * @returns {Promise<Object|null>} Loaded data or null if not found
+     * Load blocks
+     * @returns {Promise<Array|null>} Loaded blocks or null if not found
      */
-    async load() {
-        throw new Error('load() must be implemented by subclass')
+    async loadBlocks() {
+        throw new Error('loadBlocks() must be implemented by subclass')
     }
 
     /**
-     * Clear all saved data
+     * Save canvas state
+     * @param {Object} state - Canvas state (offset, zoom)
      * @returns {Promise<Object>} { success: boolean, error?: string }
      */
-    async clear() {
-        throw new Error('clear() must be implemented by subclass')
+    async saveCanvasState(state) {
+        throw new Error('saveCanvasState() must be implemented by subclass')
     }
 
     /**
-     * Check if there is saved data
+     * Load canvas state
+     * @returns {Promise<Object|null>} Loaded canvas state or null if not found
+     */
+    async loadCanvasState() {
+        throw new Error('loadCanvasState() must be implemented by subclass')
+    }
+
+    /**
+     * Clear canvas data (blocks and canvas state)
+     * @returns {Promise<Object>} { success: boolean, error?: string }
+     */
+    async clearCanvasData() {
+        throw new Error('clearCanvasData() must be implemented by subclass')
+    }
+
+    /**
+     * Check if there is saved canvas data
      * @returns {Promise<boolean>}
      */
-    async hasSavedData() {
-        throw new Error('hasSavedData() must be implemented by subclass')
+    async hasCanvasData() {
+        throw new Error('hasCanvasData() must be implemented by subclass')
+    }
+
+    // Images methods
+
+    /**
+     * Save image
+     * @param {string} id - Image ID
+     * @param {Blob} blob - Image blob
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveImage(id, blob) {
+        throw new Error('saveImage() must be implemented by subclass')
+    }
+
+    /**
+     * Load image
+     * @param {string} id - Image ID
+     * @returns {Promise<Blob|null>} Image blob or null if not found
+     */
+    async loadImage(id) {
+        throw new Error('loadImage() must be implemented by subclass')
+    }
+
+    /**
+     * Delete image
+     * @param {string} id - Image ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteImage(id) {
+        throw new Error('deleteImage() must be implemented by subclass')
+    }
+
+    /**
+     * Get all image IDs
+     * @returns {Promise<Array<string>>} Array of image IDs
+     */
+    async getAllImageIds() {
+        throw new Error('getAllImageIds() must be implemented by subclass')
+    }
+
+    /**
+     * Clone image
+     * @param {string} sourceId - Source image ID
+     * @param {string} targetId - Target image ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async cloneImage(sourceId, targetId) {
+        throw new Error('cloneImage() must be implemented by subclass')
+    }
+
+    // Settings methods
+
+    /**
+     * Save a single setting
+     * @param {string} key - Setting key
+     * @param {any} value - Setting value
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveSetting(key, value) {
+        throw new Error('saveSetting() must be implemented by subclass')
+    }
+
+    /**
+     * Load all settings as an object
+     * @returns {Promise<Object>} Settings object
+     */
+    async loadAllSettings() {
+        throw new Error('loadAllSettings() must be implemented by subclass')
+    }
+
+    // Statistics methods
+
+    /**
+     * Save daily statistics
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @param {Object} stats - Statistics object for the day
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveDailyStats(date, stats) {
+        throw new Error('saveDailyStats() must be implemented by subclass')
+    }
+
+    /**
+     * Load all statistics as an object with dates as keys
+     * @returns {Promise<Object>} Statistics object with dates as keys
+     */
+    async loadAllStatistics() {
+        throw new Error('loadAllStatistics() must be implemented by subclass')
+    }
+
+    /**
+     * Load statistics for a specific date
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {Promise<Object|null>} Statistics object or null if not found
+     */
+    async loadDailyStats(date) {
+        throw new Error('loadDailyStats() must be implemented by subclass')
+    }
+
+    /**
+     * Delete statistics for a specific date
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteDailyStats(date) {
+        throw new Error('deleteDailyStats() must be implemented by subclass')
+    }
+
+    // Meta methods
+
+    /**
+     * Save meta value
+     * @param {string} key - Meta key
+     * @param {any} value - Value to save
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveMeta(key, value) {
+        throw new Error('saveMeta() must be implemented by subclass')
+    }
+
+    /**
+     * Load meta value
+     * @param {string} key - Meta key
+     * @returns {Promise<any|null>} Meta value or null if not found
+     */
+    async loadMeta(key) {
+        throw new Error('loadMeta() must be implemented by subclass')
     }
 }
 

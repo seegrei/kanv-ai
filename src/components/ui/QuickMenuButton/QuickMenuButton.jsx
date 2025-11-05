@@ -1,23 +1,27 @@
 import { memo } from 'react'
 import { useSettingsStore } from '../../../store/useSettingsStore'
 import { createLogger } from '../../../utils/logger'
-import './SettingsButton.css'
+import './QuickMenuButton.css'
 
-const logger = createLogger('SettingsButton')
+const logger = createLogger('QuickMenuButton')
 
-const SettingsButton = memo(() => {
-    const openSettings = useSettingsStore((state) => state.openSettings)
+const QuickMenuButton = memo(() => {
+    const { isQuickMenuOpen, openQuickMenu, closeQuickMenu } = useSettingsStore()
 
     const handleClick = () => {
-        logger.log('Settings clicked')
-        openSettings()
+        logger.log('Quick menu button clicked')
+        if (isQuickMenuOpen) {
+            closeQuickMenu()
+        } else {
+            openQuickMenu()
+        }
     }
 
     return (
         <button
-            className='settings-button'
+            className='quick-menu-button'
             onClick={handleClick}
-            title='Настройки'
+            title='Menu'
         >
             <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round'>
                 <line x1='3' y1='6' x2='21' y2='6' />
@@ -28,6 +32,6 @@ const SettingsButton = memo(() => {
     )
 })
 
-SettingsButton.displayName = 'SettingsButton'
+QuickMenuButton.displayName = 'QuickMenuButton'
 
-export default SettingsButton
+export default QuickMenuButton

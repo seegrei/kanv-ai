@@ -19,6 +19,7 @@ class StorageManager {
         this.cleanupTimer = null
         this.isInitialized = false
         this.hasLoaded = false
+        this.isLoading = false
         this.isLoadingInitialData = false
 
         // Canvas state refs (will be set during init)
@@ -135,24 +136,25 @@ class StorageManager {
             return
         }
 
-        const data = this.collectData()
+        const { blocks, canvasState } = this.collectData()
 
-        // Skip save if no elements and no saved data
-        if (data.elements.length === 0 && !(await this.provider.hasSavedData())) {
-            logger.log('Skipping auto-save: no elements and no saved data')
+        // Skip save if no blocks and no saved data
+        if (blocks.length === 0 && !(await this.provider.hasCanvasData())) {
+            logger.log('Skipping auto-save: no blocks and no saved data')
             return
         }
 
-        logger.log('Auto-saving', data.elements.length, 'elements')
+        logger.log('Auto-saving', blocks.length, 'blocks')
 
-        const result = await this.provider.save(data)
+        const blocksResult = await this.provider.saveBlocks(blocks)
+        const stateResult = await this.provider.saveCanvasState(canvasState)
 
-        if (result.success) {
+        if (blocksResult.success && stateResult.success) {
             logger.log('Auto-save successful')
             // Cleanup unused images after successful save
             this.cleanupUnusedImages()
         } else {
-            logger.error('Auto-save failed:', result.error)
+            logger.error('Auto-save failed:', blocksResult.error || stateResult.error)
         }
     }
 
@@ -198,37 +200,32 @@ class StorageManager {
 
     /**
      * Load data from storage
-     * Restores elements and canvas state
-     * @returns {Promise<Object|null>} Loaded data or null
+     * Restores blocks and canvas state
+     * @returns {Promise<Object|null>} Loaded canvas state or null
      */
     async load() {
+        // Skip if already loaded or currently loading
+        if (this.hasLoaded) {
+            logger.log('Data already loaded, skipping')
+            return null
+        }
+        if (this.isLoading) {
+            logger.log('Data is currently loading, skipping duplicate request')
+            return null
+        }
+
+        // Mark as loading
+        this.isLoading = true
         logger.log('Loading data from storage')
 
         try {
-            const savedData = await this.provider.load()
+            // Check if this is the first launch by checking meta version
+            let version = await this.provider.loadMeta('version')
+            const isFirstLaunch = !version
 
-            if (savedData) {
-                // Saved data exists in localStorage - load it
-                // Set flag to prevent auto-save during initial load
-                this.isLoadingInitialData = true
-
-                // Restore elements to store (even if empty array)
-                const elements = savedData.elements || []
-                useElementsStore.getState().setElements(elements)
-
-                // Clear flag after loading
-                this.isLoadingInitialData = false
-
-                logger.log('Loaded', elements.length, 'elements from storage')
-
-                // Mark as loaded
-                this.hasLoaded = true
-
-                // Return canvas state for restoration
-                return savedData.canvasState || null
-            } else {
-                // No saved data found - first launch, initialize with default data
-                logger.log('No saved data found, initializing default data')
+            if (isFirstLaunch) {
+                // First launch - initialize with default data
+                logger.log('First launch detected (no version in meta), initializing default data')
 
                 const defaultData = await initializeDefaultData()
 
@@ -236,16 +233,22 @@ class StorageManager {
                     // Set flag to prevent auto-save during initial load
                     this.isLoadingInitialData = true
 
-                    // Load default elements to store
+                    // Load default blocks to store
                     useElementsStore.getState().setElements(defaultData.elements)
 
                     // Clear flag after loading
                     this.isLoadingInitialData = false
 
-                    logger.log('Initialized with', defaultData.elements.length, 'default elements')
+                    // Save version to meta
+                    version = '1.0'
+                    await this.provider.saveMeta('version', version)
+                    logger.log('Initialized version in meta:', version)
+
+                    logger.log('Initialized with', defaultData.elements.length, 'default blocks')
 
                     // Mark as loaded
                     this.hasLoaded = true
+                    this.isLoading = false
 
                     // Return canvas state for restoration
                     return defaultData.canvasState || null
@@ -253,11 +256,37 @@ class StorageManager {
 
                 // If initialization failed, just mark as loaded
                 this.hasLoaded = true
+                this.isLoading = false
                 return null
+            } else {
+                // Not first launch - load saved data
+                logger.log('Loading saved data (version in meta:', version, ')')
+
+                const blocks = await this.provider.loadBlocks()
+                const canvasState = await this.provider.loadCanvasState()
+
+                // Set flag to prevent auto-save during initial load
+                this.isLoadingInitialData = true
+
+                // Restore blocks to store (even if empty array)
+                useElementsStore.getState().setElements(blocks || [])
+
+                // Clear flag after loading
+                this.isLoadingInitialData = false
+
+                logger.log('Loaded', (blocks || []).length, 'blocks from storage')
+
+                // Mark as loaded
+                this.hasLoaded = true
+                this.isLoading = false
+
+                // Return canvas state for restoration
+                return canvasState || null
             }
         } catch (error) {
             logger.error('Failed to load data:', error)
             this.isLoadingInitialData = false
+            this.isLoading = false
             this.hasLoaded = true
             return null
         }
@@ -269,18 +298,19 @@ class StorageManager {
      * @returns {Promise<Object>} Save result
      */
     async save() {
-        const data = this.collectData()
-        logger.log('Manual save:', data.elements.length, 'elements')
+        const { blocks, canvasState } = this.collectData()
+        logger.log('Manual save:', blocks.length, 'blocks')
 
-        const result = await this.provider.save(data)
+        const blocksResult = await this.provider.saveBlocks(blocks)
+        const stateResult = await this.provider.saveCanvasState(canvasState)
 
-        if (result.success) {
+        if (blocksResult.success && stateResult.success) {
             logger.log('Manual save successful')
+            return { success: true }
         } else {
-            logger.error('Manual save failed:', result.error)
+            logger.error('Manual save failed:', blocksResult.error || stateResult.error)
+            return { success: false, error: blocksResult.error || stateResult.error }
         }
-
-        return result
     }
 
     /**
@@ -288,7 +318,7 @@ class StorageManager {
      * @returns {Object} Data to save
      */
     collectData() {
-        const elements = useElementsStore.getState().elements
+        const blocks = useElementsStore.getState().elements
 
         // Get current canvas state from refs if available
         const canvasState = {
@@ -297,28 +327,237 @@ class StorageManager {
         }
 
         return {
-            elements,
-            canvasState,
-            timestamp: Date.now(),
-            version: '1.0'
+            blocks,
+            canvasState
         }
     }
 
     /**
-     * Clear all saved data
+     * Clear all saved canvas data
      * @returns {Promise<Object>} Clear result
      */
-    async clear() {
-        logger.log('Clearing saved data')
-        const result = await this.provider.clear()
+    async clearData() {
+        logger.log('Clearing saved canvas data')
+        const result = await this.provider.clearCanvasData()
 
         if (result.success) {
-            logger.log('Data cleared successfully')
+            logger.log('Canvas data cleared successfully')
         } else {
-            logger.error('Failed to clear data:', result.error)
+            logger.error('Failed to clear canvas data:', result.error)
         }
 
         return result
+    }
+
+    // Images methods
+
+    /**
+     * Convert data URL to Blob
+     * @param {string} dataUrl - Data URL
+     * @returns {Promise<Blob>}
+     */
+    async dataUrlToBlob(dataUrl) {
+        return new Promise((resolve, reject) => {
+            try {
+                // Extract mime type and data
+                const parts = dataUrl.split(',')
+                const mimeMatch = parts[0].match(/:(.*?);/)
+                const mime = mimeMatch ? mimeMatch[1] : 'image/png'
+                const bstr = atob(parts[1])
+                let n = bstr.length
+                const u8arr = new Uint8Array(n)
+
+                while (n--) {
+                    u8arr[n] = bstr.charCodeAt(n)
+                }
+
+                resolve(new Blob([u8arr], { type: mime }))
+            } catch (error) {
+                reject(error)
+            }
+        })
+    }
+
+    /**
+     * Convert Blob to data URL
+     * @param {Blob} blob - Blob
+     * @returns {Promise<string>}
+     */
+    async blobToDataUrl(blob) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader()
+            reader.onload = () => resolve(reader.result)
+            reader.onerror = () => reject(new Error('Failed to convert blob to data URL'))
+            reader.readAsDataURL(blob)
+        })
+    }
+
+    /**
+     * Save image (converts data URL to Blob)
+     * @param {string} id - Image ID
+     * @param {string} dataUrl - Image data URL
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveImage(id, dataUrl) {
+        try {
+            const blob = await this.dataUrlToBlob(dataUrl)
+            return await this.provider.saveImage(id, blob)
+        } catch (error) {
+            logger.error('Error saving image:', error)
+            return false
+        }
+    }
+
+    /**
+     * Load image (returns Blob URL for rendering)
+     * @param {string} id - Image ID
+     * @returns {Promise<string|null>} Blob URL or null if not found
+     */
+    async loadImage(id) {
+        try {
+            const blob = await this.provider.loadImage(id)
+            if (blob) {
+                return URL.createObjectURL(blob)
+            }
+            return null
+        } catch (error) {
+            logger.error('Error loading image:', error)
+            return null
+        }
+    }
+
+    /**
+     * Load image as data URL (for API requests)
+     * @param {string} id - Image ID
+     * @returns {Promise<string|null>} Data URL or null if not found
+     */
+    async loadImageAsDataUrl(id) {
+        try {
+            const blob = await this.provider.loadImage(id)
+            if (blob) {
+                return await this.blobToDataUrl(blob)
+            }
+            return null
+        } catch (error) {
+            logger.error('Error loading image as data URL:', error)
+            return null
+        }
+    }
+
+    /**
+     * Delete image
+     * @param {string} id - Image ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteImage(id) {
+        return await this.provider.deleteImage(id)
+    }
+
+    /**
+     * Clone image
+     * @param {string} sourceId - Source image ID
+     * @param {string} targetId - Target image ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async cloneImage(sourceId, targetId) {
+        return await this.provider.cloneImage(sourceId, targetId)
+    }
+
+    /**
+     * Get all image IDs
+     * @returns {Promise<Array<string>>} Array of image IDs
+     */
+    async getAllImageIds() {
+        return await this.provider.getAllImageIds()
+    }
+
+    /**
+     * Revoke Blob URL to prevent memory leaks
+     * @param {string} blobUrl - Blob URL to revoke
+     */
+    revokeBlobUrl(blobUrl) {
+        if (blobUrl && blobUrl.startsWith('blob:')) {
+            URL.revokeObjectURL(blobUrl)
+        }
+    }
+
+    // Settings methods
+
+    /**
+     * Save a single setting
+     * @param {string} key - Setting key
+     * @param {any} value - Setting value
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveSetting(key, value) {
+        return await this.provider.saveSetting(key, value)
+    }
+
+    /**
+     * Load all settings as an object
+     * @returns {Promise<Object>} Settings object
+     */
+    async loadAllSettings() {
+        return await this.provider.loadAllSettings()
+    }
+
+    // Statistics methods
+
+    /**
+     * Save daily statistics
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @param {Object} stats - Statistics object for the day
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveDailyStats(date, stats) {
+        return await this.provider.saveDailyStats(date, stats)
+    }
+
+    /**
+     * Load all statistics as an object with dates as keys
+     * @returns {Promise<Object>} Statistics object with dates as keys
+     */
+    async loadAllStatistics() {
+        return await this.provider.loadAllStatistics()
+    }
+
+    /**
+     * Load statistics for a specific date
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {Promise<Object|null>} Statistics object or null if not found
+     */
+    async loadDailyStats(date) {
+        return await this.provider.loadDailyStats(date)
+    }
+
+    /**
+     * Delete statistics for a specific date
+     * @param {string} date - Date in YYYY-MM-DD format
+     * @returns {Promise<boolean>} Success status
+     */
+    async deleteDailyStats(date) {
+        return await this.provider.deleteDailyStats(date)
+    }
+
+    // Meta methods
+
+    /**
+     * Save meta value
+     * @param {string} key - Meta key
+     * @param {any} value - Value to save
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveMeta(key, value) {
+        return await this.provider.saveMeta(key, value)
+    }
+
+    /**
+     * Load meta value
+     * @param {string} key - Meta key
+     * @returns {Promise<any|null>} Meta value or null if not found
+     */
+    async loadMeta(key) {
+        return await this.provider.loadMeta(key)
     }
 
     /**

@@ -3,7 +3,7 @@
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
-    z-index: 1000;
+    z-index: var(--z-ui);
     display: flex;
     align-items: center;
     gap: 8px;

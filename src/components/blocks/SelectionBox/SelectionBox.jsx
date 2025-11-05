@@ -15,7 +15,7 @@ const SelectionBox = ({ selectionBox }) => {
                 border: `${CANVAS.SELECTION_BOX.BORDER_WIDTH}px solid ${CANVAS.SELECTION_BOX.BORDER_COLOR}`,
                 backgroundColor: CANVAS.SELECTION_BOX.BACKGROUND_COLOR,
                 pointerEvents: 'none',
-                zIndex: 9999
+                zIndex: 'var(--z-selection-box)'
             }}
         />
     )

@@ -4,7 +4,7 @@ import GeneratePopup from '../../dialogs/GeneratePopup/GeneratePopup'
 import useBlock from '../../../hooks/useBlock'
 import useAIGeneration from '../../../hooks/useAIGeneration'
 import useImageStorage from '../../../hooks/useImageStorage'
-import { ELEMENT, CANVAS } from '../../../constants'
+import { ELEMENT } from '../../../constants'
 import './ImageBlock.css'
 
 const ImageBlock = memo(({ id, x, y, width, height, imageId, aspectRatio, isSelected, isMultipleSelected, selectedIds, onClick, onMouseDown, onUpdate, onUpdateMultiple, onDragEnd, onResizeEnd, onAddBlockAt, onRuntimeBoundsChange, zoomRef, offsetRef, multipleDrag }) => {
@@ -89,7 +89,7 @@ const ImageBlock = memo(({ id, x, y, width, height, imageId, aspectRatio, isSele
                 onResizeMouseDown={block.handleResizeMouseDown}
                 resizeEdges={['t', 'r', 'b', 'l']}
                 style={{
-                    zIndex: block.isDragging ? CANVAS.Z_INDEX.DRAGGING : (isSelected ? CANVAS.Z_INDEX.SELECTED : CANVAS.Z_INDEX.DEFAULT)
+                    zIndex: block.isDragging ? 'var(--z-block-dragging)' : (isSelected ? 'var(--z-block-selected)' : 'var(--z-block-default)')
                 }}
             >
                 {imageUrl ? (

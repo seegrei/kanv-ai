@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { screenToWorld } from '../utils/coordinateUtils'
+import { screenToWorld } from '../utils/canvas/coordinateUtils'
 
 /**
  * Hook for handling single element dragging

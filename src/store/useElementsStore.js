@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { createLogger } from '../utils/logger';
 import { eventBus } from '../core/EventBus';
-import imageStorageService from '../services/storage/ImageStorageService';
+import { storageManager } from '../services/storage';
 import useHistoryStore from './useHistoryStore';
 
 const logger = createLogger('useElementsStore');
@@ -176,13 +176,13 @@ export const useElementsStore = create((set, get) => ({
             historyImageIds.forEach(imageId => usedImageIds.add(imageId));
 
             // Get all stored images
-            const allImageIds = await imageStorageService.getAllImageIds();
+            const allImageIds = await storageManager.getAllImageIds();
 
             // Delete only truly unused images (not in elements and not in history)
             const unusedImageIds = allImageIds.filter(id => !usedImageIds.has(id));
 
             for (const imageId of unusedImageIds) {
-                await imageStorageService.deleteImage(imageId);
+                await storageManager.deleteImage(imageId);
             }
 
             if (unusedImageIds.length > 0) {

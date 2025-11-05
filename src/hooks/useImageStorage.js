@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { createLogger } from '../utils/logger'
-import imageStorageService from '../services/storage/ImageStorageService'
+import { storageManager } from '../services/storage'
 
 const logger = createLogger('useImageStorage')
 
@@ -41,7 +41,7 @@ const useImageStorage = (imageId, initialImageData) => {
             if (!imageId) {
                 // Cleanup previous blob URL if exists
                 if (blobUrlRef.current) {
-                    imageStorageService.revokeBlobUrl(blobUrlRef.current)
+                    storageManager.revokeBlobUrl(blobUrlRef.current)
                     blobUrlRef.current = null
                 }
                 setImageUrl('')
@@ -50,7 +50,7 @@ const useImageStorage = (imageId, initialImageData) => {
 
             // Cleanup previous blob URL before loading new one
             if (blobUrlRef.current) {
-                imageStorageService.revokeBlobUrl(blobUrlRef.current)
+                storageManager.revokeBlobUrl(blobUrlRef.current)
                 blobUrlRef.current = null
             }
 
@@ -58,11 +58,11 @@ const useImageStorage = (imageId, initialImageData) => {
             try {
                 // If initial data is a data URL, save to IndexedDB first
                 if (initialImageData && isDataUrl(initialImageData)) {
-                    await imageStorageService.saveImage(imageId, initialImageData)
+                    await storageManager.saveImage(imageId, initialImageData)
                 }
 
                 // Load blob URL from IndexedDB
-                const blobUrl = await imageStorageService.loadImage(imageId)
+                const blobUrl = await storageManager.loadImage(imageId)
                 if (blobUrl) {
                     blobUrlRef.current = blobUrl
                     setImageUrl(blobUrl)
@@ -96,15 +96,15 @@ const useImageStorage = (imageId, initialImageData) => {
         try {
             // Revoke previous blob URL if exists
             if (blobUrlRef.current) {
-                imageStorageService.revokeBlobUrl(blobUrlRef.current)
+                storageManager.revokeBlobUrl(blobUrlRef.current)
                 blobUrlRef.current = null
             }
 
             // Save to IndexedDB
-            await imageStorageService.saveImage(imageId, data)
+            await storageManager.saveImage(imageId, data)
 
             // Load blob URL
-            const blobUrl = await imageStorageService.loadImage(imageId)
+            const blobUrl = await storageManager.loadImage(imageId)
             if (blobUrl) {
                 blobUrlRef.current = blobUrl
                 setImageUrl(blobUrl)
@@ -139,7 +139,7 @@ const useImageStorage = (imageId, initialImageData) => {
     useEffect(() => {
         return () => {
             if (blobUrlRef.current) {
-                imageStorageService.revokeBlobUrl(blobUrlRef.current)
+                storageManager.revokeBlobUrl(blobUrlRef.current)
                 blobUrlRef.current = null
             }
         }

@@ -1,13 +1,12 @@
 import StorageManager from './StorageManager'
-import LocalStorageProvider from './LocalStorageProvider'
+import IndexedDBProvider from './IndexedDBProvider'
 
 // Create provider instance
-const provider = new LocalStorageProvider()
+const provider = new IndexedDBProvider()
 
 // Create storage manager singleton
 export const storageManager = new StorageManager(provider)
 
 // Export classes for testing or custom implementations
-export { StorageManager, LocalStorageProvider }
+export { StorageManager, IndexedDBProvider }
 export { default as StorageProvider } from './StorageProvider'
-export { default as ImageStorageService } from './ImageStorageService'

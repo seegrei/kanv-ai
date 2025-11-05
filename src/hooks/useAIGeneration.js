@@ -4,25 +4,23 @@ import { eventBus } from '../core/EventBus'
 import { useSettingsStore } from '../store/useSettingsStore'
 import { useCanvasActions } from '../store/useCanvasActions'
 import OpenRouterService from '../services/api/OpenRouterService'
-import ImageGenerationService from '../services/api/ImageGenerationService'
-import imageStorageService from '../services/storage/ImageStorageService'
-import { AI, ELEMENT, CANVAS, STORAGE } from '../constants'
+import { storageManager } from '../services/storage'
+import { AI, ELEMENT, CANVAS } from '../constants'
 
 const logger = createLogger('useAIGeneration')
 
 /**
- * Load last selected model from localStorage
+ * Load last selected model from IndexedDB
  * @param {string} type - 'text' or 'image'
- * @returns {string|null} Last selected model or null
+ * @returns {Promise<string|null>} Last selected model or null
  */
-const loadLastModel = (type) => {
+const loadLastModel = async (type) => {
     try {
-        const settings = localStorage.getItem(STORAGE.KEYS.SETTINGS)
-        if (!settings) return null
+        const settings = await storageManager.loadAllSettings()
+        if (!settings || Object.keys(settings).length === 0) return null
 
-        const parsed = JSON.parse(settings)
         const key = type === 'text' ? 'lastTextModel' : 'lastImageModel'
-        const lastModel = parsed[key]
+        const lastModel = settings[key]
 
         // Verify model exists in available models
         const models = type === 'text' ? AI.MODELS : AI.IMAGE_MODELS
@@ -37,19 +35,14 @@ const loadLastModel = (type) => {
 }
 
 /**
- * Save last selected model to localStorage
+ * Save last selected model to IndexedDB
  * @param {string} type - 'text' or 'image'
  * @param {string} model - Model name
  */
-const saveLastModel = (type, model) => {
+const saveLastModel = async (type, model) => {
     try {
-        const settings = localStorage.getItem(STORAGE.KEYS.SETTINGS)
-        const parsed = settings ? JSON.parse(settings) : {}
-
         const key = type === 'text' ? 'lastTextModel' : 'lastImageModel'
-        parsed[key] = model
-
-        localStorage.setItem(STORAGE.KEYS.SETTINGS, JSON.stringify(parsed))
+        await storageManager.saveSetting(key, model)
     } catch (error) {
         logger.error('Error saving last model:', error)
     }
@@ -88,12 +81,21 @@ const useAIGeneration = ({
     isSelected,
     aspectRatio
 }) => {
+    // Get API key from settings
+    const openRouterApiKey = useSettingsStore((state) => state.openRouterApiKey)
+
+    // Determine if using fallback API key
+    const isUsingFallbackKey = !openRouterApiKey
+
+    // Always show all models in the list
+    const availableModels = type === 'text' ? AI.MODELS : AI.IMAGE_MODELS
+
     // AI Generation state
     const [showPopup, setShowPopup] = useState(false)
     const [prompt, setPrompt] = useState('')
     const [selectedModel, setSelectedModel] = useState(() => {
-        const lastModel = loadLastModel(type)
-        return lastModel || (type === 'text' ? AI.MODELS[0] : AI.IMAGE_MODELS[0])
+        const models = type === 'text' ? AI.MODELS : AI.IMAGE_MODELS
+        return models[0]
     })
     const [createNewBlock, setCreateNewBlock] = useState(true)
     const [isGenerating, setIsGenerating] = useState(false)
@@ -107,24 +109,26 @@ const useAIGeneration = ({
     const addBlockToHistory = useCanvasActions((state) => state.addBlockToHistory)
     const deleteBlockWithoutCommand = useCanvasActions((state) => state.deleteBlockWithoutCommand)
 
-    // Get API key from settings
-    const openRouterApiKey = useSettingsStore((state) => state.openRouterApiKey)
-
     // Initialize service
     useEffect(() => {
-        // Get API key from settings or fallback to environment variable
-        const apiKey = openRouterApiKey || AI.API_KEY
+        // Get API key from settings or use fallback key
+        const apiKey = openRouterApiKey || AI.FALLBACK_API_KEY
 
-        if (apiKey) {
-            serviceRef.current = type === 'text'
-                ? new OpenRouterService(apiKey)
-                : new ImageGenerationService(apiKey)
-        } else {
-            serviceRef.current = null
-        }
+        serviceRef.current = new OpenRouterService(apiKey)
     }, [type, openRouterApiKey])
 
-    // Save selected model to localStorage when it changes
+    // Load last selected model on mount
+    useEffect(() => {
+        const loadModel = async () => {
+            const lastModel = await loadLastModel(type)
+            if (lastModel) {
+                setSelectedModel(lastModel)
+            }
+        }
+        loadModel()
+    }, [type])
+
+    // Save selected model to IndexedDB when it changes
     useEffect(() => {
         saveLastModel(type, selectedModel)
     }, [type, selectedModel])
@@ -182,9 +186,26 @@ const useAIGeneration = ({
     }, [id, onClick, showPopup])
 
     const handlePromptSubmit = useCallback(async (promptText, model, shouldCreateNewBlock) => {
-        if (!serviceRef.current) {
+        // Check if no API key is available at all (neither user's nor fallback)
+        if (!openRouterApiKey && !AI.FALLBACK_API_KEY) {
             const errorMessage = 'OpenRouter API key is not configured.\n\nPlease open Settings (button in the top-left corner) and add your API key to use AI generation.\n\nYou can get your API key at https://openrouter.ai/keys'
-            logger.error('API key not configured')
+            logger.error('No API key available')
+            alert(errorMessage)
+            return
+        }
+
+        // Check if image generation requires API key
+        if (type === 'image' && isUsingFallbackKey) {
+            const errorMessage = 'Image generation requires your own API key.\n\nPlease open Settings (button in the top-left corner) and add your OpenRouter API key.\n\nYou can get your API key at https://openrouter.ai/keys'
+            logger.error('Image generation requires API key')
+            alert(errorMessage)
+            return
+        }
+
+        // Check if text generation with paid model requires API key
+        if (type === 'text' && isUsingFallbackKey && !AI.FREE_MODELS.includes(model)) {
+            const errorMessage = 'This model requires your own API key.\n\nPlease either:\n1. Select a free model (marked with :free), or\n2. Open Settings and add your OpenRouter API key\n\nYou can get your API key at https://openrouter.ai/keys'
+            logger.error('Paid model requires API key')
             alert(errorMessage)
             return
         }
@@ -197,7 +218,7 @@ const useAIGeneration = ({
         try {
             if (type === 'text') {
                 // Text generation with streaming
-                const generatedContent = await serviceRef.current.generate(
+                const generatedContent = await serviceRef.current.generateText(
                     promptText,
                     model,
                     currentContent,
@@ -240,13 +261,13 @@ const useAIGeneration = ({
                 }
             } else {
                 // Image generation
-                const generatedImageData = await serviceRef.current.generate(promptText, model, currentContent)
+                const generatedImageData = await serviceRef.current.generateImage(promptText, model, currentContent)
 
                 // Generate unique image ID
                 const newImageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
                 // Save image to IndexedDB
-                await imageStorageService.saveImage(newImageId, generatedImageData)
+                await storageManager.saveImage(newImageId, generatedImageData)
 
                 // Create new block after receiving image data (without command)
                 if (shouldCreateNewBlock) {
@@ -331,7 +352,7 @@ const useAIGeneration = ({
         } finally {
             setIsGenerating(false)
         }
-    }, [type, width, height, x, y, currentContent, id, onUpdate, createBlockWithoutCommand, addBlockToHistory, deleteBlockWithoutCommand])
+    }, [type, width, height, x, y, currentContent, id, onUpdate, createBlockWithoutCommand, addBlockToHistory, deleteBlockWithoutCommand, isUsingFallbackKey, openRouterApiKey])
 
     return {
         // State
@@ -360,7 +381,8 @@ const useAIGeneration = ({
             createNewBlock,
             setCreateNewBlock,
             onSubmit: handlePromptSubmit,
-            isGenerating
+            isGenerating,
+            availableModels
         }
     }
 }

@@ -1,5 +1,4 @@
 import { memo, forwardRef } from 'react'
-import { AI } from '../../../constants'
 import './GeneratePopup.css'
 
 /**
@@ -20,6 +19,7 @@ import './GeneratePopup.css'
  * @param {Function} props.onSubmit - Submit handler
  * @param {Function} props.onClose - Close handler
  * @param {boolean} props.isGenerating - Is currently generating
+ * @param {Array<string>} props.availableModels - Available models for selection
  */
 const GeneratePopup = memo(forwardRef(({
     type = 'text',
@@ -34,10 +34,10 @@ const GeneratePopup = memo(forwardRef(({
     setCreateNewBlock,
     onSubmit,
     onClose,
-    isGenerating = false
+    isGenerating = false,
+    availableModels = []
 }, ref) => {
     const isImageType = type === 'image';
-    const models = isImageType ? AI.IMAGE_MODELS : AI.MODELS;
     const title = isImageType ? 'Generate image' : 'Generate anything';
 
     const handleSubmit = (e) => {
@@ -99,7 +99,7 @@ const GeneratePopup = memo(forwardRef(({
                         onChange={(e) => setSelectedModel(e.target.value)}
                         disabled={isGenerating}
                     >
-                        {models.map((model) => (
+                        {availableModels.map((model) => (
                             <option key={model} value={model}>
                                 {model}
                             </option>

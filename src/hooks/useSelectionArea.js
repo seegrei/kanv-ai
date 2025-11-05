@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { screenToWorld } from '../utils/coordinateUtils'
-import { findIntersectingElements } from '../utils/intersectionUtils'
+import { screenToWorld } from '../utils/canvas/coordinateUtils'
+import { findIntersectingElements } from '../utils/canvas/intersectionUtils'
 
 const MIN_SELECTION_SIZE = 5 // Minimum size in pixels to consider as valid selection
 

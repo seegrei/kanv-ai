@@ -45,6 +45,12 @@ class BlockActionRegistry {
             return
         }
 
+        // Check if action with this id is already registered
+        if (this.actions.has(id)) {
+            logger.warn(`Action with id '${id}' is already registered, skipping duplicate registration`)
+            return
+        }
+
         // Normalize types to array
         const actionTypes = types || (type ? [type] : [])
         if (actionTypes.length === 0) {

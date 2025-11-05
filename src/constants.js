@@ -19,17 +19,6 @@ export const CANVAS = {
         BORDER_WIDTH: 2,
         BORDER_COLOR: '#007bff',
         BACKGROUND_COLOR: 'rgba(0, 123, 255, 0.1)'
-    },
-    Z_INDEX: {
-        DEFAULT: 1,
-        SELECTED: 2,
-        DRAGGING: 1000
-    },
-    PERFORMANCE: {
-        USE_RAF_FOR_RESIZE: true,
-        USE_RAF_FOR_DRAG: true,
-        USE_LOCAL_STATE_DURING_RESIZE: true,
-        MIN_RESIZE_DELTA: 0.5
     }
 }
 
@@ -57,13 +46,26 @@ export const FLOATING_TOOLBAR = {
     GAP: 4,
     PADDING: 6,
     OFFSET_FROM_BLOCK: 12,
-    Z_INDEX: 500,
     TRANSITION_DURATION: 200
 }
 
+const FREE_MODELS = [
+    'openai/gpt-oss-20b:free',
+    'deepseek/deepseek-chat-v3.1:free',
+    'z-ai/glm-4.5-air:free',
+    'minimax/minimax-m2:free',
+    'qwen/qwen3-235b-a22b:free',
+    'google/gemini-2.0-flash-exp:free',
+]
+
 export const AI = {
-    API_KEY: import.meta.env.VITE_OPENROUTER_API_KEY || '',
+    FALLBACK_API_KEY: import.meta.env.VITE_OPENROUTER_FALLBACK_API_KEY || '',
+    FREE_MODELS,
     MODELS: [
+        // free
+        ...FREE_MODELS,
+
+        // paid
         'openai/gpt-5',
         'openai/gpt-5-mini',
         'openai/gpt-5-pro',
@@ -95,15 +97,17 @@ export const AI = {
 }
 
 export const STORAGE = {
-    KEYS: {
-        SETTINGS: 'kanv_ai_settings',
-        CANVAS_DATA: 'kanv_ai_canvas_data',
-        STATISTICS: 'kanv_ai_statistics'
-    },
     INDEXED_DB: {
         DB_NAME: 'kanv_ai',
-        IMAGES_STORE_NAME: 'images',
-        DB_VERSION: 1
+        DB_VERSION: 1,
+        STORES: {
+            BLOCKS: 'blocks',
+            CANVAS_STATE: 'canvas_state',
+            IMAGES: 'images',
+            SETTINGS: 'settings',
+            STATISTICS: 'statistics',
+            META: 'meta'
+        }
     }
 }
 

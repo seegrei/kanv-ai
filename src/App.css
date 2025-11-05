@@ -1,3 +1,23 @@
+:root {
+    /* Z-Index System */
+    --z-background: 0;
+    --z-content: 10;
+    --z-block-default: 1;
+    --z-block-selected: 2;
+    --z-block-dragging: 100;
+    --z-block-resize-edge: 50;
+    --z-block-resize-handle: 51;
+    --z-block-ui: 52;
+    --z-selection-box: 200;
+    --z-slash-menu: 300;
+    --z-generate-popup: 400;
+    --z-generate-popup-arrow: 401;
+    --z-block-toolbar: 500;
+    --z-ui: 900;
+    --z-quick-menu: 1100;
+    --z-modal: 10000;
+}
+
 * {
     margin: 0;
     padding: 0;

@@ -1,4 +1,4 @@
-.settings-button {
+.quick-menu-button {
     position: fixed;
     top: 20px;
     left: 20px;
@@ -13,21 +13,21 @@
     cursor: pointer;
     transition: all 0.2s;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-    z-index: 1000;
+    z-index: var(--z-ui);
     color: #64748b;
 }
 
-.settings-button:hover {
+.quick-menu-button:hover {
     background-color: #f8fafc;
     border-color: #cbd5e1;
     color: #334155;
 }
 
-.settings-button:active {
+.quick-menu-button:active {
     transform: scale(0.95);
 }
 
-.settings-button svg {
+.quick-menu-button svg {
     width: 22px;
     height: 22px;
 }

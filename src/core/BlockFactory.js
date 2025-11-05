@@ -6,16 +6,13 @@ import BlockRegistry from './BlockRegistry';
  * Generates unique IDs, applies defaults, validates configuration
  */
 class BlockFactory {
-    static idCounter = 0;
-
     /**
      * Generate unique block ID
      * @returns {string} Unique ID
      */
     static generateId() {
-        this.idCounter++;
-        const random = Math.random().toString(36).substring(2, 9);
-        return `block_${Date.now()}_${this.idCounter}_${random}`;
+        const random = Math.random().toString(36).substring(2, 11);
+        return `${Date.now()}_${random}`;
     }
 
     /**

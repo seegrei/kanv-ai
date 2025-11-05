@@ -1,4 +1,4 @@
-import imageStorageService from '../services/storage/ImageStorageService'
+import { storageManager } from '../../services/storage'
 
 /**
  * Download image from blob URL, data URL or imageId
@@ -15,7 +15,7 @@ export const downloadImage = async (imageSource, filename = 'image') => {
 
     // If it's an imageId (starts with 'img_'), load from IndexedDB
     if (imageSource.startsWith('img_')) {
-        imageUrl = await imageStorageService.loadImage(imageSource)
+        imageUrl = await storageManager.loadImage(imageSource)
         if (!imageUrl) {
             console.error('Failed to load image from IndexedDB')
             return
@@ -72,7 +72,7 @@ export const downloadImage = async (imageSource, filename = 'image') => {
 
     // If we created a data URL from blob, revoke it
     if (imageSource.startsWith('img_')) {
-        imageStorageService.revokeBlobUrl(imageUrl)
+        storageManager.revokeBlobUrl(imageUrl)
     }
 }
 

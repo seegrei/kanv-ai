@@ -21,8 +21,7 @@ export function registerBlocks() {
             height: ELEMENT.TEXT_BLOCK.MIN_HEIGHT
         },
         createDefault: () => ({
-            content: '',
-            isMarkdownView: true
+            content: ''
         })
     });
 

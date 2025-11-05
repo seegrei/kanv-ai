@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { useUsageStatsStore } from '../../../store/useUsageStatsStore'
+import { useSettingsStore } from '../../../store/useSettingsStore'
 import { STATISTICS } from '../../../constants'
 import './UsageStatsDisplay.css'
 
@@ -8,7 +9,7 @@ import './UsageStatsDisplay.css'
  * Displays token and cost usage statistics in the bottom-left corner
  */
 const UsageStatsDisplay = () => {
-    const showStatistics = useUsageStatsStore((state) => state.showStatistics)
+    const showStatistics = useSettingsStore((state) => state.showStatistics)
     const getTodayUsage = useUsageStatsStore((state) => state.getTodayUsage)
     const [usage, setUsage] = useState({ tokens: 0, cost: 0, requests: 0 })
 

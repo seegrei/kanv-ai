@@ -1,4 +1,4 @@
-import imageStorageService from '../services/storage/ImageStorageService'
+import { storageManager } from '../services/storage'
 import { createLogger } from './logger'
 
 const logger = createLogger('initializeDefaultData')
@@ -51,7 +51,7 @@ export async function initializeDefaultData() {
         for (const image of images) {
             try {
                 const dataUrl = await loadImageAsDataUrl(image.url)
-                await imageStorageService.saveImage(image.id, dataUrl)
+                await storageManager.saveImage(image.id, dataUrl)
                 logger.log(`Saved image: ${image.id}`)
             } catch (error) {
                 logger.error(`Failed to load image ${image.id}:`, error)
@@ -61,7 +61,7 @@ export async function initializeDefaultData() {
         // Default elements
         const defaultElements = [
             {
-                id: 1762283741579,
+                id: '1762283741579_a8k3mzx2q',
                 type: 'image',
                 x: 684.4430111743337,
                 y: 264.64646826211776,
@@ -71,7 +71,7 @@ export async function initializeDefaultData() {
                 aspectRatio: 1
             },
             {
-                id: 1762283794085,
+                id: '1762283794085_b9j4nwy5r',
                 type: 'image',
                 x: 1404.6690288863465,
                 y: 593.9118078306449,
@@ -81,34 +81,31 @@ export async function initializeDefaultData() {
                 aspectRatio: 1
             },
             {
-                id: 'block_1762283815563_1_m72ksil',
+                id: '1762283815563_m72ksil7t',
                 type: 'text',
                 x: 973.9281244742393,
                 y: 284.8297004060388,
                 width: 578.970226599811,
                 height: 124,
-                content: '<h1>Hello World!</h1><p>I\'m <a target="_blank" rel="noopener noreferrer nofollow" href="https://seegrei.com/">@seegrei</a>, I created this tool for myself and I use it every day. Feel free to use it! Join the Discord community, I\'d appreciate any feedback.</p>',
-                isMarkdownView: true
+                content: '<h1>Hello World!</h1><p>I\'m <a target="_blank" rel="noopener noreferrer nofollow" href="https://seegrei.com/">@seegrei</a>, I created this tool for myself and I use it every day. Feel free to use it! Join the Discord community, I\'d appreciate any feedback.</p>'
             },
             {
-                id: 'block_1762283944106_2_q95jvps',
+                id: '1762283944106_q95jvps8u',
                 type: 'text',
                 x: 788.8421087493646,
                 y: 739.4975216432309,
                 width: 574.946617562314,
                 height: 77,
-                content: '<meta charset=\'utf-8\'><p data-pm-slice="0 0 []"><a target="_blank" rel="noopener nofollow noreferrer ugc" class="relative pointer-events-auto a cursor-pointer\n  \n  \n  \n  \n  underline\n  " href="http://kanv.ai/"><u>https://kanv.ai</u></a>&nbsp;– an infinite thought board: notes, to-dos, images, and AI on one browser canvas. Data is stored locally. Open source.</p>',
-                isMarkdownView: true
+                content: '<meta charset=\'utf-8\'><p data-pm-slice="0 0 []"><a target="_blank" rel="noopener nofollow noreferrer ugc" class="relative pointer-events-auto a cursor-pointer\n  \n  \n  \n  \n  underline\n  " href="http://kanv.ai/"><u>https://kanv.ai</u></a>&nbsp;– an infinite thought board: notes, to-dos, images, and AI on one browser canvas. Data is stored locally. Open source.</p>'
             },
             {
-                id: 1762283992497.6074,
+                id: '1762283992497_c1k5pzv9w',
                 type: 'text',
                 x: 1011.3180532551064,
                 y: 483.209701068418,
                 width: 300,
                 height: 195,
-                content: '<h1>Tasks</h1><ul data-type="taskList"><li class="task-item" data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Mark this as completed</p></div></li><li class="task-item" data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Write down your thoughts</p></div></li><li class="task-item" data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Generate an image</p></div></li></ul><p></p>',
-                isMarkdownView: true
+                content: '<h1>Tasks</h1><ul data-type="taskList"><li class="task-item" data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Mark this as completed</p></div></li><li class="task-item" data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Write down your thoughts</p></div></li><li class="task-item" data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>Generate an image</p></div></li></ul><p></p>'
             }
         ]
 

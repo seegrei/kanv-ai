@@ -8,9 +8,12 @@ import useElementsStore from '../../../store/useElementsStore'
 import useSelectionStore from '../../../store/useSelectionStore'
 import useHistoryStore from '../../../store/useHistoryStore'
 import useCanvasActions from '../../../store/useCanvasActions'
+import useSettingsStore from '../../../store/useSettingsStore'
+import useUsageStatsStore from '../../../store/useUsageStatsStore'
 import CanvasBackground from '../CanvasBackground/CanvasBackground'
 import Toolbar from '../../toolbar/Toolbar/Toolbar'
-import SettingsButton from '../../ui/SettingsButton/SettingsButton'
+import QuickMenuButton from '../../ui/QuickMenuButton/QuickMenuButton'
+import QuickMenu from '../../ui/QuickMenu/QuickMenu'
 import SettingsDialog from '../../dialogs/SettingsDialog/SettingsDialog'
 import SelectionBox from '../../blocks/SelectionBox/SelectionBox'
 import UsageStatsDisplay from '../../ui/UsageStatsDisplay/UsageStatsDisplay'
@@ -100,8 +103,12 @@ const Canvas = () => {
             // Initialize storage manager with refs
             storageManager.init(offsetRef, zoomRef)
 
-            // Load saved data
-            const canvasState = await storageManager.load()
+            // Load saved data (canvas, settings, statistics)
+            const [canvasState] = await Promise.all([
+                storageManager.load(),
+                useSettingsStore.getState().loadSettings(),
+                useUsageStatsStore.getState().loadStatistics()
+            ])
 
             if (canvasState && canvasState.offset && canvasState.zoom) {
                 loadedCanvasStateRef.current = canvasState
@@ -237,7 +244,6 @@ const Canvas = () => {
     }, [setSelectedIds])
 
     const handleUpdateElement = useCallback((id, updates) => {
-        logger.log('handleUpdateElement called for block:', id, 'with updates:', updates)
         updateElement(id, updates)
     }, [updateElement])
 
@@ -341,7 +347,8 @@ const Canvas = () => {
 
     return (
         <div className='canvas-container' onContextMenu={handleContextMenu}>
-            <SettingsButton />
+            <QuickMenuButton />
+            <QuickMenu />
             <SettingsDialog />
             <UsageStatsDisplay />
             <Toolbar onAddTextBlock={handleAddTextBlock} onAddImageBlock={handleAddImageBlock} />

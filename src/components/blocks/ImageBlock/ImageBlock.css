@@ -15,7 +15,7 @@
     right: 8px;
     display: flex;
     gap: 4px;
-    z-index: 10;
+    z-index: var(--z-block-ui);
 }
 
 .image-block-content {
@@ -55,6 +55,6 @@
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
-    z-index: 10;
+    z-index: var(--z-block-ui);
 }
 

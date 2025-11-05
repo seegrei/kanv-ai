@@ -111,7 +111,7 @@ const CanvasBackground = ({ zoomRef, offsetRef, elements }) => {
                 width: `${screenWidth}px`,
                 height: `${screenHeight}px`,
                 pointerEvents: 'auto',
-                zIndex: 0
+                zIndex: 'var(--z-background)'
             }}
         >
             <defs>

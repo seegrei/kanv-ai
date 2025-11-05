@@ -123,7 +123,7 @@ class BaseAPIService {
             'Authorization': `Bearer ${this.apiKey}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : '',
-            'X-Title': 'Makr App'
+            'X-Title': 'kanv.ai'
         }
     }
 
