@@ -76,21 +76,73 @@ class OpenRouterService extends BaseAPIService {
     }
 
     /**
+     * Generate text with chat history context
+     * @param {Array} chatHistory - Array of previous messages [{type: 'user'|'assistant', content: string, model: string}]
+     * @param {string} newPrompt - New user prompt
+     * @param {string} model - Model to use
+     * @param {string} currentContent - Current block content for context
+     * @param {function} onChunk - Callback for streaming chunks
+     * @returns {Promise<string>} Generated text
+     */
+    async generateTextWithHistory(chatHistory, newPrompt, model, currentContent = '', onChunk = null) {
+        // For text generation, we don't include images as image_url since most text models don't support vision
+        // Images in history will be represented as text placeholders
+        const messages = await this.buildMessagesWithHistory(chatHistory, newPrompt, currentContent, false)
+
+        try {
+            const response = await this.request('/chat/completions', {
+                method: 'POST',
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    temperature: 0.7,
+                    max_tokens: 8000,
+                    stream: true,
+                    usage: { include: true }
+                })
+            })
+
+            const result = await this.processStreamResponse(response, onChunk)
+            const generatedText = result.text
+
+            // Track token usage
+            if (result.usage) {
+                this.tokenTracker.track({ usage: result.usage }, model, 'text')
+            } else {
+                this.tokenTracker.track({
+                    usage: {
+                        total_tokens: this.estimateTokens(newPrompt + generatedText),
+                        prompt_tokens: this.estimateTokens(newPrompt),
+                        completion_tokens: this.estimateTokens(generatedText)
+                    }
+                }, model, 'text')
+            }
+
+            return generatedText
+        } catch (error) {
+            logger.error('Error generating text with history:', error)
+            throw error
+        }
+    }
+
+    /**
      * Generate image from prompt
      * @param {string} prompt - User prompt
      * @param {string} model - Model to use
      * @param {string} currentImageData - Current image ID or data URL for context
+     * @param {Array} chatHistory - Array of previous messages for context
      * @returns {Promise<string>} Generated image URL
      */
-    async generateImage(prompt, model, currentImageData = '') {
+    async generateImage(prompt, model, currentImageData = '', chatHistory = []) {
         // Convert imageId to data URL if needed
         let imageDataUrl = currentImageData
-        if (currentImageData && currentImageData.startsWith('img_')) {
+
+        // Check if currentImageData is an imageId (not a data URL or HTTP URL)
+        if (currentImageData && !currentImageData.startsWith('data:') && !currentImageData.startsWith('http://') && !currentImageData.startsWith('https://')) {
             // This is an imageId, load from IndexedDB
             try {
                 imageDataUrl = await storageManager.loadImageAsDataUrl(currentImageData)
                 if (!imageDataUrl) {
-                    logger.warn(`Image not found in storage: ${currentImageData}`)
                     imageDataUrl = ''
                 }
             } catch (error) {
@@ -108,13 +160,16 @@ class OpenRouterService extends BaseAPIService {
         }
 
         try {
-            const messages = this.buildImageMessages(prompt, imageDataUrl)
+            const messages = await this.buildImageMessagesWithHistory(chatHistory, prompt, imageDataUrl)
 
             const response = await this.request('/chat/completions', {
                 method: 'POST',
                 body: JSON.stringify({
                     model: model,
                     messages: messages,
+                    modalities: ['image', 'text'],
+                    max_tokens: 1000,
+                    temperature: 0.7,
                     usage: { include: true }
                 })
             })
@@ -170,6 +225,90 @@ class OpenRouterService extends BaseAPIService {
     }
 
     /**
+     * Build messages array with chat history for context
+     * Includes both text and images from chat history
+     * @param {Array} chatHistory - Array of previous messages
+     * @param {string} newPrompt - New user prompt
+     * @param {string} currentContent - Current block content for context
+     * @param {boolean} includeImages - Whether to include images as image_url (for vision models) or as text placeholders
+     * @returns {Promise<array>} Messages array
+     */
+    async buildMessagesWithHistory(chatHistory, newPrompt, currentContent = '', includeImages = false) {
+        const messages = []
+
+        // Add system prompt for HTML formatting
+        messages.push({
+            role: 'system',
+            content: 'You must always generate responses in HTML format. Use proper HTML tags for formatting text, including <h1>, <h2>, <h3> for headers, <ul>, <ol>, <li> for lists, <p> for paragraphs, <strong> for bold, <em> for italic, <code> for inline code, <pre><code> for code blocks, and other HTML elements. Do not wrap the content in a full HTML document structure (no <html>, <head>, <body> tags), just return the content HTML.'
+        })
+
+        // Add context if current content exists
+        if (currentContent && currentContent.trim()) {
+            messages.push({
+                role: 'system',
+                content: `Current block content:\n${currentContent}`
+            })
+        }
+
+        // Add chat history with both text and images
+        for (const msg of chatHistory) {
+            if (msg.type === 'user') {
+                // User text message
+                messages.push({
+                    role: 'user',
+                    content: msg.content
+                })
+            } else if (msg.type === 'assistant' && msg.contentType === 'text' && msg.content) {
+                // Assistant text message
+                messages.push({
+                    role: 'assistant',
+                    content: msg.content
+                })
+            } else if (msg.type === 'assistant' && msg.contentType === 'image' && msg.imageId) {
+                // Assistant image - include as image_url for vision models or as text placeholder for text-only models
+                if (includeImages) {
+                    try {
+                        const imageDataUrl = await storageManager.loadImageAsDataUrl(msg.imageId)
+                        if (imageDataUrl) {
+                            messages.push({
+                                role: 'user',
+                                content: [
+                                    {
+                                        type: 'image_url',
+                                        image_url: {
+                                            url: imageDataUrl
+                                        }
+                                    },
+                                    {
+                                        type: 'text',
+                                        text: 'Previously generated image'
+                                    }
+                                ]
+                            })
+                        }
+                    } catch (error) {
+                        logger.error('Error loading image from chat history:', error)
+                    }
+                } else {
+                    // For text-only models, add a text placeholder
+                    messages.push({
+                        role: 'assistant',
+                        content: '[Image was generated here]'
+                    })
+                }
+            }
+        }
+
+        // Add new user prompt
+        messages.push({
+            role: 'user',
+            content: newPrompt
+        })
+
+        return messages
+    }
+
+    /**
      * Build messages array for image generation
      * @param {string} prompt - User prompt
      * @param {string} currentImageData - Current image data URL
@@ -177,6 +316,12 @@ class OpenRouterService extends BaseAPIService {
      */
     buildImageMessages(prompt, currentImageData) {
         const messages = []
+
+        // Add system prompt for image generation
+        messages.push({
+            role: 'system',
+            content: 'You are an image generation assistant. Generate a single image based on the user\'s request. Return only the generated image.'
+        })
 
         // If there's a current image, add it as context
         if (currentImageData && currentImageData.trim()) {
@@ -191,13 +336,99 @@ class OpenRouterService extends BaseAPIService {
                     },
                     {
                         type: 'text',
-                        text: 'This is the current image in the selected block.'
+                        text: 'This is the current image in the selected block. Generate a new image based on the following prompt:'
                     }
                 ]
             })
         }
 
         // Add user prompt
+        messages.push({
+            role: 'user',
+            content: prompt
+        })
+
+        return messages
+    }
+
+    /**
+     * Build messages array for image generation with chat history
+     * Includes full history with images and text for context
+     * @param {Array} chatHistory - Array of previous messages
+     * @param {string} prompt - User prompt
+     * @param {string} currentImageData - Current image data URL
+     * @returns {Promise<array>} Messages array
+     */
+    async buildImageMessagesWithHistory(chatHistory, prompt, currentImageData) {
+        const messages = []
+
+        // Add system prompt for image generation
+        messages.push({
+            role: 'system',
+            content: 'You are an image generation assistant. Generate a single image based on the user\'s request. Return only the generated image.'
+        })
+
+        // If there's a current image, add it as context
+        if (currentImageData && currentImageData.trim()) {
+            messages.push({
+                role: 'user',
+                content: [
+                    {
+                        type: 'image_url',
+                        image_url: {
+                            url: currentImageData
+                        }
+                    },
+                    {
+                        type: 'text',
+                        text: 'This is the main image'
+                    }
+                ]
+            })
+        }
+
+        // Add chat history with both text and images
+        // For assistant images, we present them as user context
+        for (const msg of chatHistory) {
+            if (msg.type === 'user') {
+                // User text message
+                messages.push({
+                    role: 'user',
+                    content: msg.content
+                })
+            } else if (msg.type === 'assistant' && msg.contentType === 'image' && msg.imageId) {
+                // Assistant image - present as user context so model can see what was generated
+                try {
+                    const imageDataUrl = await storageManager.loadImageAsDataUrl(msg.imageId)
+                    if (imageDataUrl) {
+                        messages.push({
+                            role: 'user',
+                            content: [
+                                {
+                                    type: 'image_url',
+                                    image_url: {
+                                        url: imageDataUrl
+                                    }
+                                },
+                                {
+                                    type: 'text',
+                                    text: 'Previously generated image'
+                                }
+                            ]
+                        })
+                    }
+                } catch (error) {
+                    logger.error('Error loading image from chat history:', error)
+                }
+            } else if (msg.type === 'assistant' && msg.contentType === 'text' && msg.content) {
+                messages.push({
+                    role: 'assistant',
+                    content: msg.content
+                })
+            }
+        }
+
+        // Add new user prompt
         messages.push({
             role: 'user',
             content: prompt
@@ -217,11 +448,16 @@ class OpenRouterService extends BaseAPIService {
         if (data.choices && data.choices[0]) {
             const message = data.choices[0].message
 
-            // Check for images array in message (this is the format OpenRouter uses)
+            // Check for images array in message (primary format for image generation with modalities)
             if (message?.images && Array.isArray(message.images) && message.images.length > 0) {
                 const imageData = message.images[0]
+                // Images can be in different formats
                 if (imageData.image_url?.url) {
                     return imageData.image_url.url
+                }
+                // Sometimes the URL is directly in the image object
+                if (typeof imageData === 'object' && imageData.url) {
+                    return imageData.url
                 }
             }
 

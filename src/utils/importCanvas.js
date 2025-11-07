@@ -3,12 +3,13 @@ import { storageManager } from '../services/storage'
 import { useElementsStore } from '../store/useElementsStore'
 import { useHistoryStore } from '../store/useHistoryStore'
 import { useSelectionStore } from '../store/useSelectionStore'
+import { getAppVersion } from './version'
 
 const logger = createLogger('ImportCanvas')
 
 /**
  * Import canvas data from JSON file
- * Imports elements, canvas state, and images
+ * Imports blocks, canvas state, images, and chat histories
  * @param {File} file - JSON file to import
  * @returns {Promise<void>}
  */
@@ -20,8 +21,11 @@ export async function importCanvas(file) {
         const text = await file.text()
         const importData = JSON.parse(text)
 
+        // Support backward compatibility: handle both 'blocks' and 'elements' (old format)
+        const blocks = importData.blocks || importData.elements
+
         // Validate structure
-        if (!importData.version || !importData.elements || !importData.canvas) {
+        if (!importData.version || !blocks || !importData.canvas) {
             throw new Error('Invalid export file structure')
         }
 
@@ -35,7 +39,7 @@ export async function importCanvas(file) {
             return
         }
 
-        logger.log('Importing', importData.elements.length, 'elements')
+        logger.log('Importing', blocks.length, 'blocks')
 
         // Clear current selection
         useSelectionStore.getState().clearSelection()
@@ -43,7 +47,7 @@ export async function importCanvas(file) {
         // Clear history
         useHistoryStore.getState().commandHistory.clear()
 
-        // Clear current elements
+        // Clear current blocks
         useElementsStore.getState().setElements([])
 
         // Import images first
@@ -57,20 +61,33 @@ export async function importCanvas(file) {
             }
         }
 
-        // Import elements
-        useElementsStore.getState().setElements(importData.elements)
+        // Import chat histories
+        if (importData.chatHistories) {
+            const blockIds = Object.keys(importData.chatHistories)
+            logger.log('Importing chat histories for', blockIds.length, 'blocks')
+
+            for (const blockId of blockIds) {
+                const messages = importData.chatHistories[blockId]
+                if (messages && messages.length > 0) {
+                    await storageManager.saveBlockChatHistory(blockId, messages)
+                    logger.log('Imported', messages.length, 'messages for block:', blockId)
+                }
+            }
+        }
+
+        // Import blocks
+        useElementsStore.getState().setElements(blocks)
 
         // Save to storage
-        await storageManager.provider.saveBlocks(importData.elements)
+        await storageManager.provider.saveBlocks(blocks)
         await storageManager.provider.saveCanvasState({
             offset: importData.canvas.offset,
             zoom: importData.canvas.zoom
         })
 
-        // Save version to meta
-        if (importData.version) {
-            await storageManager.provider.saveMeta('version', importData.version)
-        }
+        // Save version to meta (use imported version or fallback to current app version)
+        const versionToSave = importData.version || getAppVersion()
+        await storageManager.provider.saveMeta('version', versionToSave)
 
         logger.log('Import completed successfully, reloading page...')
 

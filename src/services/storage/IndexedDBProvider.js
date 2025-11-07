@@ -53,7 +53,6 @@ class IndexedDBProvider extends StorageProvider {
             request.onupgradeneeded = (event) => {
                 const db = event.target.result
 
-                // Create object stores if they don't exist
                 if (!db.objectStoreNames.contains(this.stores.BLOCKS)) {
                     db.createObjectStore(this.stores.BLOCKS)
                 }
@@ -71,6 +70,9 @@ class IndexedDBProvider extends StorageProvider {
                 }
                 if (!db.objectStoreNames.contains(this.stores.META)) {
                     db.createObjectStore(this.stores.META)
+                }
+                if (!db.objectStoreNames.contains(this.stores.BLOCKS_CHAT_HISTORY)) {
+                    db.createObjectStore(this.stores.BLOCKS_CHAT_HISTORY)
                 }
 
                 logger.info('IndexedDB object stores created')
@@ -172,7 +174,7 @@ class IndexedDBProvider extends StorageProvider {
 
     /**
      * Save canvas state
-     * @param {Object} state - Canvas state (offset, zoom)
+     * @param {Object} state - Canvas state (offset, zoom, lastTextModel, lastImageModel)
      * @returns {Promise<Object>} { success: boolean, error?: string }
      */
     async saveCanvasState(state) {
@@ -183,21 +185,51 @@ class IndexedDBProvider extends StorageProvider {
                 const transaction = this.db.transaction([this.stores.CANVAS_STATE], 'readwrite')
                 const store = transaction.objectStore(this.stores.CANVAS_STATE)
 
-                // Save offset and zoom separately
+                // Save offset, zoom, and models separately
                 const saveOffset = store.put(state.offset, 'offset')
                 const saveZoom = store.put(state.zoom, 'zoom')
+                const saveTextModel = state.lastTextModel !== undefined ? store.put(state.lastTextModel, 'lastTextModel') : null
+                const saveImageModel = state.lastImageModel !== undefined ? store.put(state.lastImageModel, 'lastImageModel') : null
 
                 let offsetSaved = false
                 let zoomSaved = false
+                let textModelSaved = !saveTextModel
+                let imageModelSaved = !saveImageModel
+
+                const checkComplete = () => {
+                    if (offsetSaved && zoomSaved && textModelSaved && imageModelSaved) {
+                        resolve({ success: true })
+                    }
+                }
 
                 saveOffset.onsuccess = () => {
                     offsetSaved = true
-                    if (zoomSaved) resolve({ success: true })
+                    checkComplete()
                 }
 
                 saveZoom.onsuccess = () => {
                     zoomSaved = true
-                    if (offsetSaved) resolve({ success: true })
+                    checkComplete()
+                }
+
+                if (saveTextModel) {
+                    saveTextModel.onsuccess = () => {
+                        textModelSaved = true
+                        checkComplete()
+                    }
+                    saveTextModel.onerror = () => {
+                        reject(new Error('Failed to save canvas state'))
+                    }
+                }
+
+                if (saveImageModel) {
+                    saveImageModel.onsuccess = () => {
+                        imageModelSaved = true
+                        checkComplete()
+                    }
+                    saveImageModel.onerror = () => {
+                        reject(new Error('Failed to save canvas state'))
+                    }
                 }
 
                 saveOffset.onerror = saveZoom.onerror = () => {
@@ -222,42 +254,57 @@ class IndexedDBProvider extends StorageProvider {
                 const transaction = this.db.transaction([this.stores.CANVAS_STATE], 'readonly')
                 const store = transaction.objectStore(this.stores.CANVAS_STATE)
 
-                // Load offset and zoom separately
+                // Load offset, zoom, and models separately
                 const getOffset = store.get('offset')
                 const getZoom = store.get('zoom')
+                const getTextModel = store.get('lastTextModel')
+                const getImageModel = store.get('lastImageModel')
 
                 let offset = null
                 let zoom = null
+                let lastTextModel = null
+                let lastImageModel = null
                 let offsetLoaded = false
                 let zoomLoaded = false
+                let textModelLoaded = false
+                let imageModelLoaded = false
 
-                getOffset.onsuccess = (event) => {
-                    offset = event.target.result
-                    offsetLoaded = true
-                    if (zoomLoaded) {
+                const checkComplete = () => {
+                    if (offsetLoaded && zoomLoaded && textModelLoaded && imageModelLoaded) {
                         // Return null if neither offset nor zoom exists
                         if (offset == null && zoom == null) {
                             resolve(null)
                         } else {
-                            resolve({ offset, zoom })
+                            resolve({ offset, zoom, lastTextModel, lastImageModel })
                         }
                     }
+                }
+
+                getOffset.onsuccess = (event) => {
+                    offset = event.target.result
+                    offsetLoaded = true
+                    checkComplete()
                 }
 
                 getZoom.onsuccess = (event) => {
                     zoom = event.target.result
                     zoomLoaded = true
-                    if (offsetLoaded) {
-                        // Return null if neither offset nor zoom exists
-                        if (offset == null && zoom == null) {
-                            resolve(null)
-                        } else {
-                            resolve({ offset, zoom })
-                        }
-                    }
+                    checkComplete()
                 }
 
-                getOffset.onerror = getZoom.onerror = () => {
+                getTextModel.onsuccess = (event) => {
+                    lastTextModel = event.target.result
+                    textModelLoaded = true
+                    checkComplete()
+                }
+
+                getImageModel.onsuccess = (event) => {
+                    lastImageModel = event.target.result
+                    imageModelLoaded = true
+                    checkComplete()
+                }
+
+                getOffset.onerror = getZoom.onerror = getTextModel.onerror = getImageModel.onerror = () => {
                     reject(new Error('Failed to load canvas state'))
                 }
             })
@@ -283,27 +330,47 @@ class IndexedDBProvider extends StorageProvider {
                 const clearBlocks = blocksStore.clear()
                 const clearOffset = stateStore.delete('offset')
                 const clearZoom = stateStore.delete('zoom')
+                const clearTextModel = stateStore.delete('lastTextModel')
+                const clearImageModel = stateStore.delete('lastImageModel')
 
                 let blocksCleared = false
                 let offsetCleared = false
                 let zoomCleared = false
+                let textModelCleared = false
+                let imageModelCleared = false
+
+                const checkComplete = () => {
+                    if (blocksCleared && offsetCleared && zoomCleared && textModelCleared && imageModelCleared) {
+                        resolve({ success: true })
+                    }
+                }
 
                 clearBlocks.onsuccess = () => {
                     blocksCleared = true
-                    if (offsetCleared && zoomCleared) resolve({ success: true })
+                    checkComplete()
                 }
 
                 clearOffset.onsuccess = () => {
                     offsetCleared = true
-                    if (blocksCleared && zoomCleared) resolve({ success: true })
+                    checkComplete()
                 }
 
                 clearZoom.onsuccess = () => {
                     zoomCleared = true
-                    if (blocksCleared && offsetCleared) resolve({ success: true })
+                    checkComplete()
                 }
 
-                clearBlocks.onerror = clearOffset.onerror = clearZoom.onerror = () => {
+                clearTextModel.onsuccess = () => {
+                    textModelCleared = true
+                    checkComplete()
+                }
+
+                clearImageModel.onsuccess = () => {
+                    imageModelCleared = true
+                    checkComplete()
+                }
+
+                clearBlocks.onerror = clearOffset.onerror = clearZoom.onerror = clearTextModel.onerror = clearImageModel.onerror = () => {
                     reject(new Error('Failed to clear canvas data'))
                 }
             })
@@ -734,6 +801,155 @@ class IndexedDBProvider extends StorageProvider {
         } catch (error) {
             logger.error(`Error loading meta ${key}:`, error)
             return null
+        }
+    }
+
+    // Block chat history methods
+
+    /**
+     * Get chat history for a block
+     * @param {string} blockId - Block ID
+     * @returns {Promise<Array>} Array of messages
+     */
+    async getBlockChatHistory(blockId) {
+        try {
+            await this.init()
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([this.stores.BLOCKS_CHAT_HISTORY], 'readonly')
+                const store = transaction.objectStore(this.stores.BLOCKS_CHAT_HISTORY)
+                const request = store.get(blockId)
+
+                request.onsuccess = (event) => {
+                    const data = event.target.result
+                    resolve(data ? data.messages : [])
+                }
+
+                request.onerror = () => {
+                    logger.error(`Failed to get chat history for block ${blockId}`)
+                    reject(new Error('Failed to get chat history'))
+                }
+            })
+        } catch (error) {
+            logger.error('Error getting chat history:', error)
+            return []
+        }
+    }
+
+    /**
+     * Save chat history for a block
+     * @param {string} blockId - Block ID
+     * @param {Array} messages - Array of messages
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveBlockChatHistory(blockId, messages) {
+        try {
+            await this.init()
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([this.stores.BLOCKS_CHAT_HISTORY], 'readwrite')
+                const store = transaction.objectStore(this.stores.BLOCKS_CHAT_HISTORY)
+                const request = store.put({ messages, updatedAt: Date.now() }, blockId)
+
+                request.onsuccess = () => {
+                    logger.log(`Saved chat history for block ${blockId}:`, messages.length, 'messages')
+                    resolve(true)
+                }
+
+                request.onerror = () => {
+                    logger.error(`Failed to save chat history for block ${blockId}`)
+                    reject(new Error('Failed to save chat history'))
+                }
+            })
+        } catch (error) {
+            logger.error('Error saving chat history:', error)
+            return false
+        }
+    }
+
+    /**
+     * Clear chat history for a block
+     * @param {string} blockId - Block ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async clearBlockChatHistory(blockId) {
+        try {
+            await this.init()
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([this.stores.BLOCKS_CHAT_HISTORY], 'readwrite')
+                const store = transaction.objectStore(this.stores.BLOCKS_CHAT_HISTORY)
+                const request = store.delete(blockId)
+
+                request.onsuccess = () => {
+                    logger.log(`Cleared chat history for block ${blockId}`)
+                    resolve(true)
+                }
+
+                request.onerror = () => {
+                    logger.error(`Failed to clear chat history for block ${blockId}`)
+                    reject(new Error('Failed to clear chat history'))
+                }
+            })
+        } catch (error) {
+            logger.error('Error clearing chat history:', error)
+            return false
+        }
+    }
+
+    /**
+     * Check if block has chat history
+     * @param {string} blockId - Block ID
+     * @returns {Promise<boolean>} True if has history
+     */
+    async hasBlockChatHistory(blockId) {
+        try {
+            const messages = await this.getBlockChatHistory(blockId)
+            return messages.length > 0
+        } catch (error) {
+            logger.error('Error checking chat history:', error)
+            return false
+        }
+    }
+
+    /**
+     * Get all image IDs from all chat histories
+     * @returns {Promise<Array<string>>} Array of image IDs
+     */
+    async getAllChatHistoryImageIds() {
+        try {
+            await this.init()
+
+            return new Promise((resolve, reject) => {
+                const transaction = this.db.transaction([this.stores.BLOCKS_CHAT_HISTORY], 'readonly')
+                const objectStore = transaction.objectStore(this.stores.BLOCKS_CHAT_HISTORY)
+                const request = objectStore.getAll()
+
+                request.onsuccess = () => {
+                    const allHistories = request.result || []
+                    const imageIds = new Set()
+
+                    // Iterate through all chat histories
+                    allHistories.forEach(historyEntry => {
+                        const messages = historyEntry.messages || []
+                        messages.forEach(message => {
+                            // Collect image IDs from assistant messages
+                            if (message.type === 'assistant' && message.contentType === 'image' && message.imageId) {
+                                imageIds.add(message.imageId)
+                            }
+                        })
+                    })
+
+                    resolve(Array.from(imageIds))
+                }
+
+                request.onerror = () => {
+                    reject(new Error('Failed to get chat history image IDs'))
+                }
+            })
+        } catch (error) {
+            logger.error('Error getting chat history image IDs:', error)
+            return []
         }
     }
 }

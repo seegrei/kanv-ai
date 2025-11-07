@@ -102,6 +102,7 @@ export const STORAGE = {
         DB_VERSION: 1,
         STORES: {
             BLOCKS: 'blocks',
+            BLOCKS_CHAT_HISTORY: 'blocks_chat_history',
             CANVAS_STATE: 'canvas_state',
             IMAGES: 'images',
             SETTINGS: 'settings',

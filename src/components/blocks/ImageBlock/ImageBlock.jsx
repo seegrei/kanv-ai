@@ -1,6 +1,6 @@
 import { useCallback, memo, useEffect } from 'react'
 import Block from '../Block/Block'
-import GeneratePopup from '../../dialogs/GeneratePopup/GeneratePopup'
+import BlockChatPanel from '../../dialogs/BlockChatPanel/BlockChatPanel'
 import useBlock from '../../../hooks/useBlock'
 import useAIGeneration from '../../../hooks/useAIGeneration'
 import useImageStorage from '../../../hooks/useImageStorage'
@@ -119,7 +119,7 @@ const ImageBlock = memo(({ id, x, y, width, height, imageId, aspectRatio, isSele
                 )}
             </Block>
             {generation.showPopup && (
-                <GeneratePopup {...generation.popupProps} />
+                <BlockChatPanel {...generation.popupProps} />
             )}
         </>
     )

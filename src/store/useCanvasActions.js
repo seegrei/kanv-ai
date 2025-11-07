@@ -61,7 +61,7 @@ export const useCanvasActions = create((set) => ({
                 const blockHeight = imageHeight + ELEMENT.IMAGE.PADDING * 2;
 
                 // Generate unique image ID
-                const imageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                const imageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
 
                 // Save image to IndexedDB
                 await storageManager.saveImage(imageId, imageData);
@@ -162,7 +162,7 @@ export const useCanvasActions = create((set) => ({
 
             // If element is an image with imageId, clone the image in IndexedDB
             if (el.type === 'image' && el.imageId) {
-                const newImageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
                 await storageManager.cloneImage(el.imageId, newImageId);
                 newElement.imageId = newImageId;
             }
@@ -203,7 +203,7 @@ export const useCanvasActions = create((set) => ({
 
             // If element is an image with imageId, clone the image in IndexedDB
             if (el.type === 'image' && el.imageId) {
-                const newImageId = `img_${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
                 await storageManager.cloneImage(el.imageId, newImageId);
                 newElement.imageId = newImageId;
             }

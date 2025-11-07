@@ -161,6 +161,53 @@ class StorageProvider {
         throw new Error('deleteDailyStats() must be implemented by subclass')
     }
 
+    // Chat history methods
+
+    /**
+     * Get chat history for a block
+     * @param {string} blockId - Block ID
+     * @returns {Promise<Array>} Array of messages
+     */
+    async getBlockChatHistory(blockId) {
+        throw new Error('getBlockChatHistory() must be implemented by subclass')
+    }
+
+    /**
+     * Save chat history for a block
+     * @param {string} blockId - Block ID
+     * @param {Array} messages - Array of messages
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveBlockChatHistory(blockId, messages) {
+        throw new Error('saveBlockChatHistory() must be implemented by subclass')
+    }
+
+    /**
+     * Clear chat history for a block
+     * @param {string} blockId - Block ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async clearBlockChatHistory(blockId) {
+        throw new Error('clearBlockChatHistory() must be implemented by subclass')
+    }
+
+    /**
+     * Check if block has chat history
+     * @param {string} blockId - Block ID
+     * @returns {Promise<boolean>} True if has history
+     */
+    async hasBlockChatHistory(blockId) {
+        throw new Error('hasBlockChatHistory() must be implemented by subclass')
+    }
+
+    /**
+     * Get all image IDs from all chat histories
+     * @returns {Promise<Array<string>>} Array of image IDs
+     */
+    async getAllChatHistoryImageIds() {
+        throw new Error('getAllChatHistoryImageIds() must be implemented by subclass')
+    }
+
     // Meta methods
 
     /**

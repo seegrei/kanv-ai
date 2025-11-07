@@ -1,18 +1,19 @@
 import { createLogger } from './logger'
 import { storageManager } from '../services/storage'
+import { getAppVersion } from './version'
 
 const logger = createLogger('ExportCanvas')
 
 /**
  * Export canvas data to JSON file
- * Exports all elements, canvas state, and images as base64
+ * Exports all blocks, canvas state, images as base64, and chat histories
  * @returns {Promise<void>}
  */
 export async function exportCanvas() {
     try {
         logger.log('Starting canvas export...')
 
-        // Collect elements and canvas state
+        // Collect blocks and canvas state
         const data = storageManager.collectData()
 
         // Find all image elements
@@ -33,13 +34,42 @@ export async function exportCanvas() {
             }
         }
 
+        // Load chat histories for all blocks
+        const chatHistories = {}
+        for (const block of data.blocks) {
+            const history = await storageManager.getBlockChatHistory(block.id)
+            if (history && history.length > 0) {
+                chatHistories[block.id] = history
+                logger.log('Loaded chat history for block:', block.id, '(' + history.length + ' messages)')
+            }
+        }
+
+        // Load images from chat histories
+        for (const blockId in chatHistories) {
+            const messages = chatHistories[blockId]
+            for (const message of messages) {
+                if (message.contentType === 'image' && message.imageId) {
+                    const imageId = message.imageId
+                    if (!images[imageId]) {
+                        logger.log('Loading image from chat history:', imageId)
+                        const dataUrl = await storageManager.loadImageAsDataUrl(imageId)
+                        if (dataUrl) {
+                            images[imageId] = dataUrl
+                        } else {
+                            logger.warn('Failed to load image from chat history:', imageId)
+                        }
+                    }
+                }
+            }
+        }
+
         // Create export structure
         const exportData = {
-            version: '1.0.0',
-            timestamp: Date.now(),
+            version: getAppVersion(),
             canvas: data.canvasState,
-            elements: data.blocks,
-            images
+            blocks: data.blocks,
+            images,
+            chatHistories
         }
 
         // Convert to JSON

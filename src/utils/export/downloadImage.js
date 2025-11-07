@@ -13,8 +13,13 @@ export const downloadImage = async (imageSource, filename = 'image') => {
 
     let imageUrl = imageSource
 
-    // If it's an imageId (starts with 'img_'), load from IndexedDB
-    if (imageSource.startsWith('img_')) {
+    // Check if it's an imageId (not a URL) - load from IndexedDB
+    const isUrl = imageSource.startsWith('blob:') ||
+                  imageSource.startsWith('data:') ||
+                  imageSource.startsWith('http://') ||
+                  imageSource.startsWith('https://')
+
+    if (!isUrl) {
         imageUrl = await storageManager.loadImage(imageSource)
         if (!imageUrl) {
             console.error('Failed to load image from IndexedDB')
@@ -70,8 +75,8 @@ export const downloadImage = async (imageSource, filename = 'image') => {
     // Cleanup
     document.body.removeChild(link)
 
-    // If we created a data URL from blob, revoke it
-    if (imageSource.startsWith('img_')) {
+    // If we loaded from IndexedDB, revoke the blob URL
+    if (!isUrl) {
         storageManager.revokeBlobUrl(imageUrl)
     }
 }

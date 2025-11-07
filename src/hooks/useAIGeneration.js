@@ -3,6 +3,8 @@ import { createLogger } from '../utils/logger'
 import { eventBus } from '../core/EventBus'
 import { useSettingsStore } from '../store/useSettingsStore'
 import { useCanvasActions } from '../store/useCanvasActions'
+import { useHistoryStore } from '../store/useHistoryStore'
+import UpdateContentCommand from '../commands/UpdateContentCommand'
 import OpenRouterService from '../services/api/OpenRouterService'
 import { storageManager } from '../services/storage'
 import { AI, ELEMENT, CANVAS } from '../constants'
@@ -10,47 +12,8 @@ import { AI, ELEMENT, CANVAS } from '../constants'
 const logger = createLogger('useAIGeneration')
 
 /**
- * Load last selected model from IndexedDB
- * @param {string} type - 'text' or 'image'
- * @returns {Promise<string|null>} Last selected model or null
- */
-const loadLastModel = async (type) => {
-    try {
-        const settings = await storageManager.loadAllSettings()
-        if (!settings || Object.keys(settings).length === 0) return null
-
-        const key = type === 'text' ? 'lastTextModel' : 'lastImageModel'
-        const lastModel = settings[key]
-
-        // Verify model exists in available models
-        const models = type === 'text' ? AI.MODELS : AI.IMAGE_MODELS
-        if (lastModel && models.includes(lastModel)) {
-            return lastModel
-        }
-        return null
-    } catch (error) {
-        logger.error('Error loading last model:', error)
-        return null
-    }
-}
-
-/**
- * Save last selected model to IndexedDB
- * @param {string} type - 'text' or 'image'
- * @param {string} model - Model name
- */
-const saveLastModel = async (type, model) => {
-    try {
-        const key = type === 'text' ? 'lastTextModel' : 'lastImageModel'
-        await storageManager.saveSetting(key, model)
-    } catch (error) {
-        logger.error('Error saving last model:', error)
-    }
-}
-
-/**
  * Universal AI generation hook for text and image blocks
- * Manages AI generation state, popup visibility, and generation logic
+ * Manages AI generation state, popup visibility, chat history, and generation logic
  *
  * @param {Object} config
  * @param {string} config.type - 'text' or 'image'
@@ -87,18 +50,24 @@ const useAIGeneration = ({
     // Determine if using fallback API key
     const isUsingFallbackKey = !openRouterApiKey
 
-    // Always show all models in the list
-    const availableModels = type === 'text' ? AI.MODELS : AI.IMAGE_MODELS
-
     // AI Generation state
     const [showPopup, setShowPopup] = useState(false)
     const [prompt, setPrompt] = useState('')
     const [selectedModel, setSelectedModel] = useState(() => {
+        // Try to get saved model from memory first
+        const savedModel = type === 'text' ? storageManager.lastTextModel : storageManager.lastImageModel
+        if (savedModel) {
+            const models = type === 'text' ? AI.MODELS : AI.IMAGE_MODELS
+            if (models.includes(savedModel)) {
+                return savedModel
+            }
+        }
+        // Fallback to first model
         const models = type === 'text' ? AI.MODELS : AI.IMAGE_MODELS
         return models[0]
     })
-    const [createNewBlock, setCreateNewBlock] = useState(true)
     const [isGenerating, setIsGenerating] = useState(false)
+    const [chatHistory, setChatHistory] = useState([])
 
     // Refs
     const popupRef = useRef(null)
@@ -108,6 +77,7 @@ const useAIGeneration = ({
     const createBlockWithoutCommand = useCanvasActions((state) => state.createBlockWithoutCommand)
     const addBlockToHistory = useCanvasActions((state) => state.addBlockToHistory)
     const deleteBlockWithoutCommand = useCanvasActions((state) => state.deleteBlockWithoutCommand)
+    const executeCommand = useHistoryStore((state) => state.executeCommand)
 
     // Initialize service
     useEffect(() => {
@@ -117,21 +87,20 @@ const useAIGeneration = ({
         serviceRef.current = new OpenRouterService(apiKey)
     }, [type, openRouterApiKey])
 
-    // Load last selected model on mount
-    useEffect(() => {
-        const loadModel = async () => {
-            const lastModel = await loadLastModel(type)
-            if (lastModel) {
-                setSelectedModel(lastModel)
-            }
-        }
-        loadModel()
-    }, [type])
+    // Model loading and saving is now handled in BlockChatPanel based on generationType
+    // This prevents conflicts when switching between text/image generation
 
-    // Save selected model to IndexedDB when it changes
+    // Load chat history when popup opens
+    // Model loading is handled in BlockChatPanel based on generationType
     useEffect(() => {
-        saveLastModel(type, selectedModel)
-    }, [type, selectedModel])
+        if (showPopup) {
+            const loadData = async () => {
+                const history = await storageManager.getBlockChatHistory(id)
+                setChatHistory(history)
+            }
+            loadData()
+        }
+    }, [showPopup, id])
 
     // Hide popup when block is deselected (only if not generating)
     useEffect(() => {
@@ -185,7 +154,10 @@ const useAIGeneration = ({
         setShowPopup(!showPopup)
     }, [id, onClick, showPopup])
 
-    const handlePromptSubmit = useCallback(async (promptText, model, shouldCreateNewBlock) => {
+    const handlePromptSubmit = useCallback(async (promptText, model, generationType) => {
+        // Use provided generationType or fallback to block type
+        const actualGenerationType = generationType || type
+
         // Check if no API key is available at all (neither user's nor fallback)
         if (!openRouterApiKey && !AI.FALLBACK_API_KEY) {
             const errorMessage = 'OpenRouter API key is not configured.\n\nPlease open Settings (button in the top-left corner) and add your API key to use AI generation.\n\nYou can get your API key at https://openrouter.ai/keys'
@@ -195,7 +167,7 @@ const useAIGeneration = ({
         }
 
         // Check if image generation requires API key
-        if (type === 'image' && isUsingFallbackKey) {
+        if (actualGenerationType === 'image' && isUsingFallbackKey) {
             const errorMessage = 'Image generation requires your own API key.\n\nPlease open Settings (button in the top-left corner) and add your OpenRouter API key.\n\nYou can get your API key at https://openrouter.ai/keys'
             logger.error('Image generation requires API key')
             alert(errorMessage)
@@ -203,156 +175,256 @@ const useAIGeneration = ({
         }
 
         // Check if text generation with paid model requires API key
-        if (type === 'text' && isUsingFallbackKey && !AI.FREE_MODELS.includes(model)) {
+        if (actualGenerationType === 'text' && isUsingFallbackKey && !AI.FREE_MODELS.includes(model)) {
             const errorMessage = 'This model requires your own API key.\n\nPlease either:\n1. Select a free model (marked with :free), or\n2. Open Settings and add your OpenRouter API key\n\nYou can get your API key at https://openrouter.ai/keys'
             logger.error('Paid model requires API key')
             alert(errorMessage)
             return
         }
 
+        // Add user message to history
+        const userMessage = {
+            id: `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            type: 'user',
+            content: promptText,
+            model: model,
+            timestamp: Date.now()
+        }
+
+        // Add loading message
+        const loadingMessage = {
+            id: `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            type: 'loading',
+            timestamp: Date.now()
+        }
+
+        const newHistory = [...chatHistory, userMessage, loadingMessage]
+        setChatHistory(newHistory)
+        setPrompt('')
         setIsGenerating(true)
-        let newBlockId = null
-        let blockCreated = false
-        let blockDeleted = false
 
         try {
-            if (type === 'text') {
-                // Text generation with streaming
-                const generatedContent = await serviceRef.current.generateText(
+            if (actualGenerationType === 'text') {
+                // Text generation with streaming and chat history
+                let generatedContent = ''
+
+                await serviceRef.current.generateTextWithHistory(
+                    chatHistory,
                     promptText,
                     model,
                     currentContent,
                     (chunk) => {
-                        // Create new block on first chunk if needed (without command)
-                        if (shouldCreateNewBlock && !blockCreated) {
-                            const blockWidth = width || ELEMENT.TEXT_BLOCK.MIN_WIDTH
-                            const blockHeight = height || ELEMENT.TEXT_BLOCK.MIN_HEIGHT
+                        generatedContent = chunk
 
-                            const popupHeight = popupRef.current ? popupRef.current.offsetHeight : 200
-                            const popupX = x + blockWidth + 20
-                            const popupY = y
-
-                            const newX = popupX
-                            const newY = popupY + popupHeight + ELEMENT.TEXT_BLOCK.BLOCK_SPACING
-
-                            newBlockId = createBlockWithoutCommand(
-                                'text',
-                                newX,
-                                newY,
-                                blockWidth,
-                                blockHeight,
-                                { content: chunk }
-                            )
-                            blockCreated = true
-                        } else if (shouldCreateNewBlock && newBlockId) {
-                            onUpdate(newBlockId, { content: chunk })
-                        } else {
-                            onUpdate(id, { content: chunk })
-                        }
+                        // Update loading message with partial content
+                        setChatHistory(prev => {
+                            const updated = [...prev]
+                            const loadingIndex = updated.findIndex(msg => msg.id === loadingMessage.id)
+                            if (loadingIndex !== -1) {
+                                updated[loadingIndex] = {
+                                    ...updated[loadingIndex],
+                                    type: 'assistant',
+                                    content: chunk,
+                                    contentType: 'text',
+                                    model: model
+                                }
+                            }
+                            return updated
+                        })
                     }
                 )
 
-                if (shouldCreateNewBlock && newBlockId) {
-                    onUpdate(newBlockId, { content: generatedContent })
-                    // Add block to history with final content
-                    addBlockToHistory(newBlockId)
-                } else {
-                    onUpdate(id, { content: generatedContent })
-                }
+                // Final update with complete content
+                const finalHistory = [...chatHistory, userMessage, {
+                    id: loadingMessage.id,
+                    type: 'assistant',
+                    content: generatedContent,
+                    contentType: 'text',
+                    model: model,
+                    timestamp: Date.now()
+                }]
+
+                setChatHistory(finalHistory)
+                await storageManager.saveBlockChatHistory(id, finalHistory)
+
             } else {
-                // Image generation
-                const generatedImageData = await serviceRef.current.generateImage(promptText, model, currentContent)
+                // Image generation with chat history
+                const generatedImageData = await serviceRef.current.generateImage(promptText, model, currentContent, chatHistory)
 
                 // Generate unique image ID
-                const newImageId = `img_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                const newImageId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
                 // Save image to IndexedDB
                 await storageManager.saveImage(newImageId, generatedImageData)
 
-                // Create new block after receiving image data (without command)
-                if (shouldCreateNewBlock) {
-                    const blockWidth = width || ELEMENT.IMAGE.DEFAULT_WIDTH
-                    const blockHeight = height || ELEMENT.IMAGE.DEFAULT_HEIGHT
+                // Replace loading message with assistant message
+                const finalHistory = [...chatHistory, userMessage, {
+                    id: loadingMessage.id,
+                    type: 'assistant',
+                    contentType: 'image',
+                    imageId: newImageId,
+                    model: model,
+                    timestamp: Date.now()
+                }]
 
-                    const popupHeight = popupRef.current ? popupRef.current.offsetHeight : 200
-                    const popupX = x + blockWidth + 20
-                    const popupY = y
-
-                    const newX = popupX
-                    const newY = popupY + popupHeight + ELEMENT.TEXT_BLOCK.BLOCK_SPACING
-
-                    newBlockId = createBlockWithoutCommand(
-                        'image',
-                        newX,
-                        newY,
-                        blockWidth,
-                        blockHeight,
-                        { imageId: null, aspectRatio: blockWidth / blockHeight }
-                    )
-                }
-
-                // Load image to get dimensions and calculate aspect ratio
-                const img = new Image()
-                img.onload = () => {
-                    // Don't update if block was deleted due to error
-                    if (blockDeleted) return
-
-                    const imgWidth = img.naturalWidth
-                    const imgHeight = img.naturalHeight
-                    const newAspectRatio = imgWidth / imgHeight
-
-                    const currentWidth = width || ELEMENT.IMAGE.DEFAULT_WIDTH
-                    const maxWidth = Math.min(currentWidth, CANVAS.MAX_IMAGE_SIZE)
-                    const newWidth = Math.min(imgWidth, maxWidth)
-                    const newHeight = newWidth / newAspectRatio
-
-                    const targetId = shouldCreateNewBlock ? newBlockId : id
-                    onUpdate(targetId, {
-                        imageId: newImageId,
-                        width: newWidth,
-                        height: newHeight,
-                        aspectRatio: newAspectRatio
-                    })
-
-                    // Add block to history with final image after load completes
-                    if (shouldCreateNewBlock && newBlockId) {
-                        addBlockToHistory(newBlockId)
-                    }
-                }
-
-                img.onerror = () => {
-                    // Don't update if block was deleted due to error
-                    if (blockDeleted) return
-
-                    const targetId = shouldCreateNewBlock ? newBlockId : id
-                    onUpdate(targetId, { imageId: newImageId })
-
-                    // Add block to history even on image load error
-                    if (shouldCreateNewBlock && newBlockId) {
-                        addBlockToHistory(newBlockId)
-                    }
-                }
-
-                img.src = generatedImageData
+                setChatHistory(finalHistory)
+                await storageManager.saveBlockChatHistory(id, finalHistory)
             }
-
-            if (!shouldCreateNewBlock) {
-                setShowPopup(false)
-            }
-            setPrompt('')
         } catch (error) {
-            logger.error(`Error generating ${type}:`, error)
-            alert(`Error generating ${type}: ${error.message}`)
+            logger.error(`Error generating ${actualGenerationType}:`, error)
+            alert(`Error generating ${actualGenerationType}: ${error.message}`)
 
-            // If error occurred and block was created, delete it without command
-            if (shouldCreateNewBlock && newBlockId) {
-                deleteBlockWithoutCommand(newBlockId)
-                blockDeleted = true
-            }
+            // Remove loading message on error
+            setChatHistory(prev => prev.filter(msg => msg.id !== loadingMessage.id))
         } finally {
             setIsGenerating(false)
         }
-    }, [type, width, height, x, y, currentContent, id, onUpdate, createBlockWithoutCommand, addBlockToHistory, deleteBlockWithoutCommand, isUsingFallbackKey, openRouterApiKey])
+    }, [type, id, chatHistory, isUsingFallbackKey, openRouterApiKey, currentContent])
+
+    const handleApplyToBlock = useCallback(async (message) => {
+        if (message.type !== 'assistant') return
+
+        try {
+            if (message.contentType === 'text') {
+                // Apply text content to block using command
+                const command = new UpdateContentCommand(id, currentContent, message.content)
+                executeCommand(command)
+            } else if (message.contentType === 'image' && message.imageId) {
+                // Duplicate image and apply to block
+                const newImageId = await storageManager.duplicateImage(message.imageId)
+                if (newImageId) {
+                    // Load image to get dimensions
+                    const imageUrl = await storageManager.loadImage(newImageId)
+                    if (imageUrl) {
+                        const img = new Image()
+                        img.onload = () => {
+                            const imgWidth = img.naturalWidth
+                            const imgHeight = img.naturalHeight
+                            const newAspectRatio = imgWidth / imgHeight
+
+                            const currentWidth = width || ELEMENT.IMAGE.DEFAULT_WIDTH
+                            const maxWidth = Math.min(currentWidth, CANVAS.MAX_IMAGE_SIZE)
+                            const newWidth = Math.min(imgWidth, maxWidth)
+                            const newHeight = newWidth / newAspectRatio
+
+                            onUpdate(id, {
+                                imageId: newImageId,
+                                width: newWidth,
+                                height: newHeight,
+                                aspectRatio: newAspectRatio
+                            })
+
+                            storageManager.revokeBlobUrl(imageUrl)
+                        }
+
+                        img.onerror = () => {
+                            onUpdate(id, { imageId: newImageId })
+                            storageManager.revokeBlobUrl(imageUrl)
+                        }
+
+                        img.src = imageUrl
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error('Error applying to block:', error)
+            alert(`Error applying to block: ${error.message}`)
+        }
+    }, [id, currentContent, width, executeCommand, onUpdate])
+
+    const handleCreateNewBlock = useCallback(async (message) => {
+        if (message.type !== 'assistant') return
+
+        try {
+            const blockWidth = width || (type === 'text' ? ELEMENT.TEXT_BLOCK.MIN_WIDTH : ELEMENT.IMAGE.DEFAULT_WIDTH)
+            const blockHeight = height || (type === 'text' ? ELEMENT.TEXT_BLOCK.MIN_HEIGHT : ELEMENT.IMAGE.DEFAULT_HEIGHT)
+
+            const popupHeight = popupRef.current ? popupRef.current.offsetHeight : 200
+            const popupX = x + blockWidth + 20
+            const popupY = y
+
+            const newX = popupX
+            const newY = popupY + popupHeight + ELEMENT.TEXT_BLOCK.BLOCK_SPACING
+
+            if (message.contentType === 'text') {
+                // Create text block
+                const newBlockId = createBlockWithoutCommand(
+                    'text',
+                    newX,
+                    newY,
+                    blockWidth,
+                    blockHeight,
+                    { content: message.content }
+                )
+                addBlockToHistory(newBlockId)
+            } else if (message.contentType === 'image' && message.imageId) {
+                // Duplicate image and create block
+                const newImageId = await storageManager.duplicateImage(message.imageId)
+                if (newImageId) {
+                    const imageUrl = await storageManager.loadImage(newImageId)
+                    if (imageUrl) {
+                        const img = new Image()
+                        img.onload = () => {
+                            const imgWidth = img.naturalWidth
+                            const imgHeight = img.naturalHeight
+                            const newAspectRatio = imgWidth / imgHeight
+
+                            const maxWidth = Math.min(blockWidth, CANVAS.MAX_IMAGE_SIZE)
+                            const newWidth = Math.min(imgWidth, maxWidth)
+                            const newHeight = newWidth / newAspectRatio
+
+                            const newBlockId = createBlockWithoutCommand(
+                                'image',
+                                newX,
+                                newY,
+                                newWidth,
+                                newHeight,
+                                {
+                                    imageId: newImageId,
+                                    aspectRatio: newAspectRatio
+                                }
+                            )
+                            addBlockToHistory(newBlockId)
+
+                            storageManager.revokeBlobUrl(imageUrl)
+                        }
+
+                        img.onerror = () => {
+                            const newBlockId = createBlockWithoutCommand(
+                                'image',
+                                newX,
+                                newY,
+                                blockWidth,
+                                blockHeight,
+                                {
+                                    imageId: newImageId,
+                                    aspectRatio: blockWidth / blockHeight
+                                }
+                            )
+                            addBlockToHistory(newBlockId)
+
+                            storageManager.revokeBlobUrl(imageUrl)
+                        }
+
+                        img.src = imageUrl
+                    }
+                }
+            }
+        } catch (error) {
+            logger.error('Error creating new block:', error)
+            alert(`Error creating new block: ${error.message}`)
+        }
+    }, [type, x, y, width, height, createBlockWithoutCommand, addBlockToHistory])
+
+    const handleClearHistory = useCallback(async () => {
+        try {
+            await storageManager.clearBlockChatHistory(id)
+            setChatHistory([])
+        } catch (error) {
+            logger.error('Error clearing history:', error)
+            alert(`Error clearing history: ${error.message}`)
+        }
+    }, [id])
 
     return {
         // State
@@ -365,7 +437,7 @@ const useAIGeneration = ({
         // Handlers
         handleGenerateClick,
 
-        // Props for GeneratePopup
+        // Props for BlockChatPanel
         popupProps: {
             ref: popupRef,
             type,
@@ -378,11 +450,12 @@ const useAIGeneration = ({
             setPrompt,
             selectedModel,
             setSelectedModel,
-            createNewBlock,
-            setCreateNewBlock,
             onSubmit: handlePromptSubmit,
             isGenerating,
-            availableModels
+            chatHistory,
+            onApply: handleApplyToBlock,
+            onCreate: handleCreateNewBlock,
+            onClearHistory: handleClearHistory
         }
     }
 }

@@ -3,6 +3,7 @@ import { eventBus } from '../../core/EventBus'
 import { useElementsStore } from '../../store/useElementsStore'
 import { CANVAS } from '../../constants'
 import { initializeDefaultData } from '../../utils/initializeDefaultData'
+import { getAppVersion } from '../../utils/version'
 
 const logger = createLogger('StorageManager')
 
@@ -25,6 +26,8 @@ class StorageManager {
         // Canvas state refs (will be set during init)
         this.canvasOffset = { x: 0, y: 0 }
         this.canvasZoom = CANVAS.ZOOM.DEFAULT
+        this.lastTextModel = null
+        this.lastImageModel = null
 
         // Store unsubscribe functions
         this.unsubscribeStore = null
@@ -103,6 +106,26 @@ class StorageManager {
             this.scheduleAutoSave()
         })
         this.eventUnsubscribers.push(unsubHistoryRedo)
+
+        // Track canvas viewport changes (zoom/pan) via window events
+        const handleCanvasZoom = () => {
+            logger.log('Canvas zoom changed, triggering auto-save')
+            this.scheduleAutoSave()
+        }
+
+        const handleCanvasPan = () => {
+            logger.log('Canvas pan changed, triggering auto-save')
+            this.scheduleAutoSave()
+        }
+
+        window.addEventListener('canvas:zoom', handleCanvasZoom)
+        window.addEventListener('canvas:pan', handleCanvasPan)
+
+        // Store cleanup functions for window events
+        this.eventUnsubscribers.push(() => {
+            window.removeEventListener('canvas:zoom', handleCanvasZoom)
+            window.removeEventListener('canvas:pan', handleCanvasPan)
+        })
     }
 
     /**
@@ -240,7 +263,7 @@ class StorageManager {
                     this.isLoadingInitialData = false
 
                     // Save version to meta
-                    version = '1.0'
+                    version = getAppVersion()
                     await this.provider.saveMeta('version', version)
                     logger.log('Initialized version in meta:', version)
 
@@ -249,6 +272,10 @@ class StorageManager {
                     // Mark as loaded
                     this.hasLoaded = true
                     this.isLoading = false
+
+                    // Save default blocks to database immediately
+                    logger.log('Saving default blocks to database')
+                    await this.autoSave()
 
                     // Return canvas state for restoration
                     return defaultData.canvasState || null
@@ -275,6 +302,12 @@ class StorageManager {
                 this.isLoadingInitialData = false
 
                 logger.log('Loaded', (blocks || []).length, 'blocks from storage')
+
+                // Restore models from canvas state
+                if (canvasState) {
+                    this.lastTextModel = canvasState.lastTextModel || null
+                    this.lastImageModel = canvasState.lastImageModel || null
+                }
 
                 // Mark as loaded
                 this.hasLoaded = true
@@ -323,7 +356,9 @@ class StorageManager {
         // Get current canvas state from refs if available
         const canvasState = {
             offset: this.offsetRef?.current || this.canvasOffset,
-            zoom: this.zoomRef?.current || this.canvasZoom
+            zoom: this.zoomRef?.current || this.canvasZoom,
+            lastTextModel: this.lastTextModel,
+            lastImageModel: this.lastImageModel
         }
 
         return {
@@ -341,6 +376,9 @@ class StorageManager {
         const result = await this.provider.clearCanvasData()
 
         if (result.success) {
+            // Reset models in memory
+            this.lastTextModel = null
+            this.lastImageModel = null
             logger.log('Canvas data cleared successfully')
         } else {
             logger.error('Failed to clear canvas data:', result.error)
@@ -464,6 +502,27 @@ class StorageManager {
     }
 
     /**
+     * Duplicate image
+     * Creates a copy of an image with a new unique ID
+     * @param {string} sourceId - Source image ID
+     * @returns {Promise<string|null>} New image ID or null if failed
+     */
+    async duplicateImage(sourceId) {
+        try {
+            const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+            const success = await this.provider.cloneImage(sourceId, newId)
+            if (success) {
+                logger.log('Duplicated image:', sourceId, '->', newId)
+                return newId
+            }
+            return null
+        } catch (error) {
+            logger.error('Error duplicating image:', error)
+            return null
+        }
+    }
+
+    /**
      * Get all image IDs
      * @returns {Promise<Array<string>>} Array of image IDs
      */
@@ -558,6 +617,111 @@ class StorageManager {
      */
     async loadMeta(key) {
         return await this.provider.loadMeta(key)
+    }
+
+    // Model selection methods
+
+    /**
+     * Save last selected model for text or image
+     * @param {string} type - 'text' or 'image'
+     * @param {string} model - Model name
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveLastModel(type, model) {
+        try {
+            if (type === 'text') {
+                this.lastTextModel = model
+            } else if (type === 'image') {
+                this.lastImageModel = model
+            }
+
+            // Trigger auto-save to persist models
+            this.scheduleAutoSave()
+            return true
+        } catch (error) {
+            logger.error(`Error saving last ${type} model:`, error)
+            return false
+        }
+    }
+
+    /**
+     * Load last selected model for text or image
+     * @param {string} type - 'text' or 'image'
+     * @returns {Promise<string|null>} Last selected model or null
+     */
+    async loadLastModel(type) {
+        try {
+            // If data is already loaded, return from memory
+            if (this.hasLoaded) {
+                if (type === 'text') {
+                    return this.lastTextModel
+                } else if (type === 'image') {
+                    return this.lastImageModel
+                }
+                return null
+            }
+
+            // Otherwise load from storage
+            const canvasState = await this.provider.loadCanvasState()
+            if (!canvasState) return null
+
+            if (type === 'text') {
+                return canvasState.lastTextModel || null
+            } else if (type === 'image') {
+                return canvasState.lastImageModel || null
+            }
+            return null
+        } catch (error) {
+            logger.error(`Error loading last ${type} model:`, error)
+            return null
+        }
+    }
+
+    // Block chat history methods
+
+    /**
+     * Get chat history for a block
+     * @param {string} blockId - Block ID
+     * @returns {Promise<Array>} Array of messages
+     */
+    async getBlockChatHistory(blockId) {
+        return await this.provider.getBlockChatHistory(blockId)
+    }
+
+    /**
+     * Save chat history for a block
+     * @param {string} blockId - Block ID
+     * @param {Array} messages - Array of messages
+     * @returns {Promise<boolean>} Success status
+     */
+    async saveBlockChatHistory(blockId, messages) {
+        return await this.provider.saveBlockChatHistory(blockId, messages)
+    }
+
+    /**
+     * Clear chat history for a block
+     * @param {string} blockId - Block ID
+     * @returns {Promise<boolean>} Success status
+     */
+    async clearBlockChatHistory(blockId) {
+        return await this.provider.clearBlockChatHistory(blockId)
+    }
+
+    /**
+     * Check if block has chat history
+     * @param {string} blockId - Block ID
+     * @returns {Promise<boolean>} True if has history
+     */
+    async hasBlockChatHistory(blockId) {
+        return await this.provider.hasBlockChatHistory(blockId)
+    }
+
+    /**
+     * Get all image IDs from all chat histories
+     * @returns {Promise<Array<string>>} Array of image IDs
+     */
+    async getAllChatHistoryImageIds() {
+        return await this.provider.getAllChatHistoryImageIds()
     }
 
     /**

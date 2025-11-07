@@ -175,10 +175,14 @@ export const useElementsStore = create((set, get) => ({
             const historyImageIds = useHistoryStore.getState().getImageReferences();
             historyImageIds.forEach(imageId => usedImageIds.add(imageId));
 
+            // 3. Collect image IDs from chat histories
+            const chatHistoryImageIds = await storageManager.getAllChatHistoryImageIds();
+            chatHistoryImageIds.forEach(imageId => usedImageIds.add(imageId));
+
             // Get all stored images
             const allImageIds = await storageManager.getAllImageIds();
 
-            // Delete only truly unused images (not in elements and not in history)
+            // Delete only truly unused images (not in elements, history, or chat)
             const unusedImageIds = allImageIds.filter(id => !usedImageIds.has(id));
 
             for (const imageId of unusedImageIds) {

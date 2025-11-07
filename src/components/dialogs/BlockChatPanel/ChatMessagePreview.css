@@ -1,0 +1,127 @@
+.chat-message-preview-wrapper {
+    width: 100%;
+}
+
+.chat-message-preview {
+    width: 100%;
+    outline: none;
+    cursor: default;
+    user-select: text;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-color);
+}
+
+/* Import TipTap editor styles */
+.chat-message-preview h1,
+.chat-message-preview h2,
+.chat-message-preview h3 {
+    margin: 0 0 12px 0;
+    line-height: 1.3;
+    font-weight: 700;
+}
+
+.chat-message-preview h1 {
+    font-size: 20px;
+}
+
+.chat-message-preview h2 {
+    font-size: 18px;
+}
+
+.chat-message-preview h3 {
+    font-size: 16px;
+}
+
+.chat-message-preview p {
+    margin: 0 0 12px 0;
+}
+
+.chat-message-preview p:last-child {
+    margin-bottom: 0;
+}
+
+.chat-message-preview strong {
+    font-weight: 700;
+}
+
+.chat-message-preview em {
+    font-style: italic;
+}
+
+.chat-message-preview code {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+}
+
+.chat-message-preview pre {
+    background-color: rgba(0, 0, 0, 0.05);
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0 0 12px 0;
+}
+
+.chat-message-preview pre code {
+    background: none;
+    padding: 0;
+    font-size: 13px;
+}
+
+.chat-message-preview ul,
+.chat-message-preview ol {
+    margin: 0 0 12px 0;
+    padding-left: 24px;
+}
+
+.chat-message-preview li {
+    margin-bottom: 4px;
+}
+
+.chat-message-preview blockquote {
+    border-left: 3px solid var(--border-color);
+    padding-left: 16px;
+    margin: 0 0 12px 0;
+    color: var(--text-secondary);
+}
+
+.chat-message-preview a {
+    color: var(--link-color);
+    text-decoration: underline;
+}
+
+.chat-message-preview hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 16px 0;
+}
+
+/* Task list styles */
+.chat-message-preview ul[data-type='taskList'] {
+    list-style: none;
+    padding-left: 0;
+}
+
+.chat-message-preview ul[data-type='taskList'] li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+}
+
+.chat-message-preview ul[data-type='taskList'] li > label {
+    flex-shrink: 0;
+    margin-top: 3px;
+}
+
+.chat-message-preview ul[data-type='taskList'] li > div {
+    flex: 1;
+}
+
+.chat-message-preview ul[data-type='taskList'] input[type='checkbox'] {
+    width: 16px;
+    height: 16px;
+    cursor: default;
+}
