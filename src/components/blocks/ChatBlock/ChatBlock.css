@@ -1,0 +1,61 @@
+/* Chat Block Wrapper */
+.chat-block {
+    position: absolute;
+    background: white;
+    border: 1px solid #dbdfe8;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    cursor: move;
+    transition: box-shadow 0.2s ease;
+    overflow: hidden;
+}
+
+.chat-block:hover {
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.chat-block.selected {
+    background-color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+    border-radius: 0;
+    overflow: visible;
+}
+
+.chat-block.dragging {
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+}
+
+/* Chat Block Content Container */
+.chat-block-content {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+}
+
+/* Allow text selection only in input and textarea */
+.chat-block-content textarea,
+.chat-block-content input {
+    user-select: text;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+}
+
+/* Override ChatCore border radius for block mode */
+.chat-block.selected .chat-block-content .chat-core {
+    border-radius: 0;
+}
+
+.chat-block.selected .chat-block-content .chat-core-header {
+    border-radius: 0;
+}
+
+/* When not selected, apply rounded corners to header */
+.chat-block:not(.selected) .chat-block-content .chat-core-header {
+    border-radius: 8px 8px 0 0;
+}

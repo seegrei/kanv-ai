@@ -1,12 +1,12 @@
 import { memo, useMemo, useRef, useEffect, useState } from 'react'
-import { blockActionRegistry } from '../../../core/BlockActionRegistry'
-import useElementsStore from '../../../store/useElementsStore'
-import useSelectionStore from '../../../store/useSelectionStore'
-import useHistoryStore from '../../../store/useHistoryStore'
-import useBlockToolbar from '../../../hooks/useBlockToolbar'
-import BlockToolbarButton from '../BlockToolbarButton/BlockToolbarButton'
-import BlockToolbarSeparator from '../BlockToolbarSeparator/BlockToolbarSeparator'
-import './BlockFloatingToolbar.css'
+import { blockActionRegistry } from '../../core/BlockActionRegistry'
+import useElementsStore from '../../store/useElementsStore'
+import useSelectionStore from '../../store/useSelectionStore'
+import useHistoryStore from '../../store/useHistoryStore'
+import useBlockToolbar from '../../hooks/useBlockToolbar'
+import FloatingToolbarButton from './FloatingToolbarButton'
+import FloatingToolbarSeparator from './FloatingToolbarSeparator'
+import './FloatingToolbar.css'
 
 /**
  * Floating toolbar that appears above selected blocks
@@ -20,7 +20,7 @@ import './BlockFloatingToolbar.css'
  * @param {Object} props.zoomRef - Ref to canvas zoom level
  * @param {Object} props.offsetRef - Ref to canvas offset
  */
-const BlockFloatingToolbar = memo(({ blockId, blockType, blockBounds, isVisible, zoomRef, offsetRef }) => {
+const FloatingToolbar = memo(({ blockId, blockType, blockBounds, isVisible, zoomRef, offsetRef }) => {
     const toolbarRef = useRef(null)
 
     // Get stores for context
@@ -85,7 +85,7 @@ const BlockFloatingToolbar = memo(({ blockId, blockType, blockBounds, isVisible,
     return (
         <div
             ref={toolbarRef}
-            className='block-floating-toolbar'
+            className='floating-toolbar'
             style={{
                 left: `${left}px`,
                 top: `${top}px`
@@ -94,12 +94,12 @@ const BlockFloatingToolbar = memo(({ blockId, blockType, blockBounds, isVisible,
         >
             {groupedActions.map(item => {
                 if (item.type === 'separator') {
-                    return <BlockToolbarSeparator key={item.key} />
+                    return <FloatingToolbarSeparator key={item.key} />
                 }
 
                 const { action } = item
                 return (
-                    <BlockToolbarButton
+                    <FloatingToolbarButton
                         key={item.key}
                         icon={action.icon}
                         text={action.text}
@@ -118,6 +118,6 @@ const BlockFloatingToolbar = memo(({ blockId, blockType, blockBounds, isVisible,
     )
 })
 
-BlockFloatingToolbar.displayName = 'BlockFloatingToolbar'
+FloatingToolbar.displayName = 'FloatingToolbar'
 
-export default BlockFloatingToolbar
+export default FloatingToolbar

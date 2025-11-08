@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { createLogger } from '../utils/logger'
 import { eventBus } from '../core/EventBus'
 import { useSettingsStore } from '../store/useSettingsStore'
+import { useSelectionStore } from '../store/useSelectionStore'
 import { useCanvasActions } from '../store/useCanvasActions'
 import { useHistoryStore } from '../store/useHistoryStore'
 import UpdateContentCommand from '../commands/UpdateContentCommand'
@@ -87,11 +88,11 @@ const useAIGeneration = ({
         serviceRef.current = new OpenRouterService(apiKey)
     }, [type, openRouterApiKey])
 
-    // Model loading and saving is now handled in BlockChatPanel based on generationType
+    // Model loading and saving is now handled in Chat based on generationType
     // This prevents conflicts when switching between text/image generation
 
     // Load chat history when popup opens
-    // Model loading is handled in BlockChatPanel based on generationType
+    // Model loading is handled in Chat based on generationType
     useEffect(() => {
         if (showPopup) {
             const loadData = async () => {
@@ -138,6 +139,30 @@ const useAIGeneration = ({
         const handleGenerateEvent = ({ blockId }) => {
             if (blockId === id) {
                 setShowPopup(true)
+                // Focus camera on chat panel's top center
+                // Give a small delay to ensure popup is rendered and has dimensions
+                setTimeout(() => {
+                    const blockWidth = type === 'text'
+                        ? (width || ELEMENT.TEXT_BLOCK.MIN_WIDTH)
+                        : (width || ELEMENT.IMAGE.DEFAULT_WIDTH)
+                    const popupWidth = 350 // Default popup width from Chat
+                    const spacing = 20
+
+                    // Calculate chat panel position
+                    const chatX = x + blockWidth + spacing
+                    const chatY = y
+
+                    // Calculate center point 300px below chat's top edge
+                    const chatCenterX = chatX + popupWidth / 2
+                    const chatFocusY = chatY + 300
+
+                    // Focus on the center point 300px below top edge
+                    eventBus.emit('canvas:focus-point', {
+                        x: chatCenterX,
+                        y: chatFocusY,
+                        options: { centerY: 0.5 }
+                    })
+                }, 100)
             }
         }
 
@@ -146,7 +171,7 @@ const useAIGeneration = ({
         return () => {
             eventBus.off('block:generate', handleGenerateEvent)
         }
-    }, [id])
+    }, [id, type, x, y, width, height])
 
     const handleGenerateClick = useCallback((e) => {
         e.stopPropagation()
@@ -357,6 +382,12 @@ const useAIGeneration = ({
                     { content: message.content }
                 )
                 addBlockToHistory(newBlockId)
+
+                // Select and focus on new block with delay to ensure it's in the store
+                useSelectionStore.getState().setSelectedIds([newBlockId])
+                setTimeout(() => {
+                    eventBus.emit('block:created', { id: newBlockId })
+                }, 100)
             } else if (message.contentType === 'image' && message.imageId) {
                 // Duplicate image and create block
                 const newImageId = await storageManager.duplicateImage(message.imageId)
@@ -386,6 +417,12 @@ const useAIGeneration = ({
                             )
                             addBlockToHistory(newBlockId)
 
+                            // Select and focus on new block with delay to ensure it's in the store
+                            useSelectionStore.getState().setSelectedIds([newBlockId])
+                            setTimeout(() => {
+                                eventBus.emit('block:created', { id: newBlockId })
+                            }, 100)
+
                             storageManager.revokeBlobUrl(imageUrl)
                         }
 
@@ -402,6 +439,12 @@ const useAIGeneration = ({
                                 }
                             )
                             addBlockToHistory(newBlockId)
+
+                            // Select and focus on new block with delay to ensure it's in the store
+                            useSelectionStore.getState().setSelectedIds([newBlockId])
+                            setTimeout(() => {
+                                eventBus.emit('block:created', { id: newBlockId })
+                            }, 100)
 
                             storageManager.revokeBlobUrl(imageUrl)
                         }
@@ -437,7 +480,7 @@ const useAIGeneration = ({
         // Handlers
         handleGenerateClick,
 
-        // Props for BlockChatPanel
+        // Props for Chat
         popupProps: {
             ref: popupRef,
             type,

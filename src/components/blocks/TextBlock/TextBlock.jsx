@@ -8,7 +8,7 @@ import SlashCommands from '../../../lib/tiptap/SlashCommands'
 import CustomDocument from '../../../lib/tiptap/CustomDocument'
 import { getSuggestionItems, renderItems } from '../../../lib/tiptap/SlashCommandsSuggestion/SlashCommandsSuggestion'
 import Block from '../Block/Block'
-import BlockChatPanel from '../../dialogs/BlockChatPanel/BlockChatPanel'
+import ChatDialog from '../../dialogs/ChatDialog/ChatDialog'
 import useBlock from '../../../hooks/useBlock'
 import useAIGeneration from '../../../hooks/useAIGeneration'
 import useSelectionStore from '../../../store/useSelectionStore'
@@ -380,7 +380,7 @@ const TextBlock = memo(({ id, x, y, width, height, content, isSelected, isMultip
                 )}
             </Block>
             {generation.showPopup && (
-                <BlockChatPanel {...generation.popupProps} />
+                <ChatDialog {...generation.popupProps} />
             )}
         </>
     )

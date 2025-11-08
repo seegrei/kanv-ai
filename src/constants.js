@@ -38,6 +38,13 @@ export const ELEMENT = {
         DEFAULT_WIDTH: 300,
         DEFAULT_HEIGHT: 300,
         PADDING: 0
+    },
+    CHAT_BLOCK: {
+        MIN_WIDTH: 450,
+        MIN_HEIGHT: 400,
+        DEFAULT_WIDTH: 450,
+        DEFAULT_HEIGHT: 300,
+        PADDING: 0
     }
 }
 

@@ -1,0 +1,44 @@
+/* Popup-specific wrapper styles */
+.chat-panel {
+    position: absolute;
+    width: 450px;
+    border: 1px solid #dbdfe8;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    z-index: var(--z-generate-popup);
+    display: flex;
+    flex-direction: column;
+    overflow: visible;
+}
+
+/* Arrow pointing to block */
+.chat-panel::before {
+    content: '';
+    position: absolute;
+    left: -9px;
+    top: 16px;
+    width: 0;
+    height: 0;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    border-right: 9px solid #dbdfe8;
+    z-index: var(--z-generate-popup-arrow);
+}
+
+.chat-panel::after {
+    content: '';
+    position: absolute;
+    left: -8px;
+    top: 16px;
+    width: 0;
+    height: 0;
+    border-top: 9px solid transparent;
+    border-bottom: 9px solid transparent;
+    border-right: 9px solid #f9fafc;
+    z-index: calc(var(--z-generate-popup-arrow) + 1);
+}
+
+/* Apply rounded corners to header */
+.chat-panel .chat-core-header {
+    border-radius: 12px 12px 0 0;
+}

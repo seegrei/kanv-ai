@@ -1,48 +1,50 @@
-import { memo, forwardRef, useRef, useEffect, useState, useMemo } from 'react'
-import ChatMessage from './ChatMessage'
+import { memo, useRef, useEffect, useState, useMemo } from 'react'
+import ChatMessage from '../ChatMessage/ChatMessage'
 import { AI } from '../../../constants'
 import { storageManager } from '../../../services/storage'
-import './BlockChatPanel.css'
+import './ChatCore.css'
 
 /**
- * BlockChatPanel Component
- * Chat-based AI generation interface for blocks
- * Maintains conversation history and allows applying responses to blocks
+ * ChatCore Component
+ * Core chat interface logic shared between popup and block modes
+ * Handles message display, input, model selection, and generation
  *
  * @param {Object} props
  * @param {string} props.type - Type of block ('text' or 'image')
- * @param {number} props.blockX - Block X position
- * @param {number} props.blockY - Block Y position
- * @param {number} props.blockWidth - Block width
  * @param {string} props.prompt - Current prompt value
  * @param {Function} props.setPrompt - Set prompt function
  * @param {string} props.selectedModel - Selected AI model
  * @param {Function} props.setSelectedModel - Set model function
  * @param {Function} props.onSubmit - Submit handler (receives promptText, model, generationType)
- * @param {Function} props.onClose - Close handler
  * @param {boolean} props.isGenerating - Is currently generating
  * @param {Array} props.chatHistory - Chat history messages
  * @param {Function} props.onApply - Apply message to block handler
  * @param {Function} props.onCreate - Create new block from message handler
  * @param {Function} props.onClearHistory - Clear history handler
+ * @param {boolean} props.showHeader - Show header with title and clear button
+ * @param {boolean} props.showTypeToggle - Show generation type toggle
+ * @param {boolean} props.showApplyButton - Show "Apply to selected block" button (default: true)
+ * @param {string} props.className - Additional CSS class
+ * @param {Object} props.style - Additional inline styles
  */
-const BlockChatPanel = memo(forwardRef(({
+const ChatCore = memo(({
     type = 'text',
-    blockX,
-    blockY,
-    blockWidth,
     prompt,
     setPrompt,
     selectedModel,
     setSelectedModel,
     onSubmit,
-    onClose,
     isGenerating = false,
     chatHistory = [],
     onApply,
     onCreate,
-    onClearHistory
-}, ref) => {
+    onClearHistory,
+    showHeader = true,
+    showTypeToggle = true,
+    showApplyButton = true,
+    className = '',
+    style = {}
+}) => {
     const messagesEndRef = useRef(null)
     const isLoadingModel = useRef(false)
     const modelLoadTimestamp = useRef(Date.now())
@@ -106,33 +108,27 @@ const BlockChatPanel = memo(forwardRef(({
         }
     }
 
-    const popupStyle = {
-        left: `${blockX + blockWidth + 20}px`,
-        top: `${blockY}px`
-    }
-
     return (
         <div
-            ref={ref}
-            className='block-chat-panel'
-            style={popupStyle}
-            onClick={(e) => e.stopPropagation()}
-            onMouseDown={(e) => e.stopPropagation()}
+            className={`chat-core ${className}`}
+            style={style}
         >
             {/* Header */}
-            <div className='chat-panel-header'>
-                <h3 className='chat-panel-title'>Ask anything</h3>
-                <button
-                    className='chat-clear-button'
-                    onClick={onClearHistory}
-                    title='Clear history'
-                    disabled={isGenerating || chatHistory.length === 0}
-                >
-                    <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                        <path d='M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2' />
-                    </svg>
-                </button>
-            </div>
+            {showHeader && (
+                <div className='chat-core-header'>
+                    <h3 className='chat-core-title'>Ask anything</h3>
+                    <button
+                        className='chat-clear-button'
+                        onClick={onClearHistory}
+                        title='Clear history'
+                        disabled={isGenerating || chatHistory.length === 0}
+                    >
+                        <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                            <path d='M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2' />
+                        </svg>
+                    </button>
+                </div>
+            )}
 
             {/* Chat history */}
             <div className='chat-messages-container'>
@@ -150,6 +146,7 @@ const BlockChatPanel = memo(forwardRef(({
                             blockType={type}
                             isLastMessage={index === chatHistory.length - 1}
                             isGenerating={isGenerating}
+                            showApplyButton={showApplyButton}
                         />
                     ))
                 )}
@@ -159,24 +156,26 @@ const BlockChatPanel = memo(forwardRef(({
             {/* Input form */}
             <form onSubmit={handleSubmit} className='chat-input-form'>
                 {/* Generation type toggle */}
-                <div className='generation-type-toggle'>
-                    <button
-                        type='button'
-                        className={`toggle-button ${generationType === 'text' ? 'active' : ''}`}
-                        onClick={() => setGenerationType('text')}
-                        disabled={isGenerating}
-                    >
-                        Text
-                    </button>
-                    <button
-                        type='button'
-                        className={`toggle-button ${generationType === 'image' ? 'active' : ''}`}
-                        onClick={() => setGenerationType('image')}
-                        disabled={isGenerating}
-                    >
-                        Image
-                    </button>
-                </div>
+                {showTypeToggle && (
+                    <div className='generation-type-toggle'>
+                        <button
+                            type='button'
+                            className={`toggle-button ${generationType === 'text' ? 'active' : ''}`}
+                            onClick={() => setGenerationType('text')}
+                            disabled={isGenerating}
+                        >
+                            Text
+                        </button>
+                        <button
+                            type='button'
+                            className={`toggle-button ${generationType === 'image' ? 'active' : ''}`}
+                            onClick={() => setGenerationType('image')}
+                            disabled={isGenerating}
+                        >
+                            Image
+                        </button>
+                    </div>
+                )}
 
                 <textarea
                     className='chat-input-textarea'
@@ -229,8 +228,8 @@ const BlockChatPanel = memo(forwardRef(({
             </form>
         </div>
     )
-}))
+})
 
-BlockChatPanel.displayName = 'BlockChatPanel'
+ChatCore.displayName = 'ChatCore'
 
-export default BlockChatPanel
+export default ChatCore

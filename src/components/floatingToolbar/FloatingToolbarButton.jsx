@@ -12,7 +12,7 @@ import { memo } from 'react'
  * @param {boolean} props.disabled - Whether button is disabled
  * @param {string} props.variant - Button variant ('default', 'primary') for styling
  */
-const BlockToolbarButton = memo(({ icon, text, onClick, label, disabled = false, variant = 'default' }) => {
+const FloatingToolbarButton = memo(({ icon, text, onClick, label, disabled = false, variant = 'default' }) => {
     const handleClick = (e) => {
         e.stopPropagation()
         if (!disabled && onClick) {
@@ -21,10 +21,10 @@ const BlockToolbarButton = memo(({ icon, text, onClick, label, disabled = false,
     }
 
     const className = [
-        'block-toolbar-button',
-        disabled && 'block-toolbar-button--disabled',
-        variant === 'primary' && 'block-toolbar-button--primary',
-        text && 'block-toolbar-button--with-text'
+        'floating-toolbar-button',
+        disabled && 'floating-toolbar-button--disabled',
+        variant === 'primary' && 'floating-toolbar-button--primary',
+        text && 'floating-toolbar-button--with-text'
     ].filter(Boolean).join(' ')
 
     return (
@@ -36,11 +36,11 @@ const BlockToolbarButton = memo(({ icon, text, onClick, label, disabled = false,
             type='button'
         >
             {icon}
-            {text && <span className='block-toolbar-button-text'>{text}</span>}
+            {text && <span className='floating-toolbar-button-text'>{text}</span>}
         </button>
     )
 })
 
-BlockToolbarButton.displayName = 'BlockToolbarButton'
+FloatingToolbarButton.displayName = 'FloatingToolbarButton'
 
-export default BlockToolbarButton
+export default FloatingToolbarButton

@@ -1,9 +1,9 @@
 import { memo } from 'react'
-import useToolStore from '../../../store/useToolStore'
-import useHistoryStore from '../../../store/useHistoryStore'
+import useToolStore from '../../store/useToolStore'
+import useHistoryStore from '../../store/useHistoryStore'
 import './Toolbar.css'
 
-const Toolbar = memo(({ onAddTextBlock, onAddImageBlock }) => {
+const Toolbar = memo(({ onAddTextBlock, onAddImageBlock, onAddChatBlock }) => {
     const toolMode = useToolStore((state) => state.toolMode)
     const setToolMode = useToolStore((state) => state.setToolMode)
 
@@ -58,6 +58,15 @@ const Toolbar = memo(({ onAddTextBlock, onAddImageBlock }) => {
 
             <div className='toolbar-separator'></div>
 
+            <button
+                className='toolbar-button'
+                onClick={onAddChatBlock}
+                title='Add chat block (C)'
+            >
+                <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                    <path d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' />
+                </svg>
+            </button>
             <button
                 className='toolbar-button'
                 onClick={onAddTextBlock}

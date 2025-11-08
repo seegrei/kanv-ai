@@ -151,7 +151,7 @@ export const useCanvasActions = create((set) => ({
         const offsetX = viewportCenterX - clipboardCenterX;
         const offsetY = viewportCenterY - clipboardCenterY;
 
-        // Create new elements with offset and clone images if needed
+        // Create new elements with offset and clone images/chat history if needed
         const newElements = await Promise.all(clipboard.map(async (el) => {
             const newElement = {
                 ...el,
@@ -165,6 +165,32 @@ export const useCanvasActions = create((set) => ({
                 const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
                 await storageManager.cloneImage(el.imageId, newImageId);
                 newElement.imageId = newImageId;
+            }
+
+            // If element is a chat block, clone chat history and images
+            if (el.type === 'chat') {
+                const chatHistory = await storageManager.getBlockChatHistory(el.id);
+
+                if (chatHistory.length > 0) {
+                    // Clone all images from chat history
+                    const newChatHistory = await Promise.all(chatHistory.map(async (message) => {
+                        if (message.type === 'assistant' && message.contentType === 'image' && message.imageId) {
+                            // Clone image
+                            const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                            await storageManager.cloneImage(message.imageId, newImageId);
+
+                            // Return message with new image ID
+                            return {
+                                ...message,
+                                imageId: newImageId
+                            };
+                        }
+                        return message;
+                    }));
+
+                    // Save chat history for new block
+                    await storageManager.saveBlockChatHistory(newElement.id, newChatHistory);
+                }
             }
 
             return newElement;
@@ -192,7 +218,7 @@ export const useCanvasActions = create((set) => ({
         const selectedElements = useElementsStore.getState().getElementsByIds(selectedIds);
         const offset = CANVAS.DUPLICATE_OFFSET;
 
-        // Clone images BEFORE creating command (async operation)
+        // Clone images and chat history BEFORE creating command (async operation)
         const duplicatedBlocks = await Promise.all(selectedElements.map(async (el) => {
             const newElement = {
                 ...el,
@@ -206,6 +232,32 @@ export const useCanvasActions = create((set) => ({
                 const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
                 await storageManager.cloneImage(el.imageId, newImageId);
                 newElement.imageId = newImageId;
+            }
+
+            // If element is a chat block, clone chat history and images
+            if (el.type === 'chat') {
+                const chatHistory = await storageManager.getBlockChatHistory(el.id);
+
+                if (chatHistory.length > 0) {
+                    // Clone all images from chat history
+                    const newChatHistory = await Promise.all(chatHistory.map(async (message) => {
+                        if (message.type === 'assistant' && message.contentType === 'image' && message.imageId) {
+                            // Clone image
+                            const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                            await storageManager.cloneImage(message.imageId, newImageId);
+
+                            // Return message with new image ID
+                            return {
+                                ...message,
+                                imageId: newImageId
+                            };
+                        }
+                        return message;
+                    }));
+
+                    // Save chat history for new block
+                    await storageManager.saveBlockChatHistory(newElement.id, newChatHistory);
+                }
             }
 
             return newElement;
@@ -275,6 +327,24 @@ export const useCanvasActions = create((set) => ({
         useSelectionStore.getState().setSelectedIds([newBlock.id]);
 
         logger.log('Image block created:', newBlock.id);
+    },
+
+    // Create new chat block in viewport center
+    createChatBlock: (offsetRef, zoomRef) => {
+        const currentOffset = offsetRef.current;
+        const currentZoom = zoomRef.current;
+
+        const viewportCenterX = -currentOffset.x / currentZoom + window.innerWidth / 2 / currentZoom;
+        const viewportCenterY = -currentOffset.y / currentZoom + window.innerHeight / 2 / currentZoom;
+
+        const defaultSize = { width: ELEMENT.CHAT_BLOCK.DEFAULT_WIDTH, height: ELEMENT.CHAT_BLOCK.DEFAULT_HEIGHT };
+        const newBlock = BlockFactory.createAt('chat', viewportCenterX - defaultSize.width / 2, viewportCenterY - defaultSize.height / 2);
+
+        const command = new CreateBlockCommand(newBlock);
+        useHistoryStore.getState().executeCommand(command);
+        useSelectionStore.getState().setSelectedIds([newBlock.id]);
+
+        logger.log('Chat block created:', newBlock.id);
     },
 
     // Create text block at specific position (for AI generation)

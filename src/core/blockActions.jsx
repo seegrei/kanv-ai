@@ -2,6 +2,8 @@ import { blockActionRegistry } from '../core/BlockActionRegistry'
 import { eventBus } from '../core/EventBus'
 import LightningIcon from '../components/icons/LightningIcon/LightningIcon'
 import DownloadIcon from '../components/icons/DownloadIcon/DownloadIcon'
+import TrashIcon from '../components/icons/TrashIcon/TrashIcon'
+import DeleteBlockCommand from '../commands/DeleteBlockCommand'
 import { downloadAsMarkdown } from '../utils/export/htmlToMarkdown'
 import { downloadImage } from '../utils/export/downloadImage'
 import { createLogger } from '../utils/logger'
@@ -59,6 +61,64 @@ export const initializeBlockActions = () => {
             const element = context.actions.getElementById(blockId)
             if (element && element.imageId) {
                 await downloadImage(element.imageId, 'image')
+            }
+        }
+    })
+
+    // Clear history action for chat blocks
+    blockActionRegistry.registerAction({
+        id: 'clear-chat-history',
+        types: ['chat'],
+        icon: <TrashIcon />,
+        label: 'Clear history',
+        group: 'chat',
+        order: 1,
+        handler: (blockId, blockType, context) => {
+            const element = context.actions.getElementById(blockId)
+            if (element && element.chatHistory && element.chatHistory.length > 0) {
+                if (confirm('Are you sure you want to clear the chat history?')) {
+                    context.actions.updateElement(blockId, { chatHistory: [] })
+                }
+            }
+        },
+        isVisible: (blockId, blockType, context) => {
+            const element = context.actions.getElementById(blockId)
+            return element && element.chatHistory && element.chatHistory.length > 0
+        }
+    })
+
+    // Delete action for text and image blocks
+    blockActionRegistry.registerAction({
+        id: 'delete',
+        types: ['text', 'image'],
+        icon: <TrashIcon />,
+        label: 'Delete',
+        group: 'export',
+        order: 2,
+        handler: (blockId, blockType, context) => {
+            const element = context.actions.getElementById(blockId)
+            if (element) {
+                const command = new DeleteBlockCommand(element)
+                context.stores.historyStore.executeCommand(command)
+                context.stores.selectionStore.clearSelection()
+            }
+        }
+    })
+
+    // Delete action for chat blocks
+    blockActionRegistry.registerAction({
+        id: 'delete-chat',
+        types: ['chat'],
+        icon: <TrashIcon />,
+        label: 'Delete',
+        group: 'export',
+        order: 2,
+        handler: (blockId, blockType, context) => {
+            const element = context.actions.getElementById(blockId)
+            if (element) {
+                const command = new DeleteBlockCommand(element)
+                context.stores.historyStore.executeCommand(command)
+                context.stores.selectionStore.clearSelection()
             }
         }
     })

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import ChatMessagePreview from './ChatMessagePreview'
+import ChatMessagePreview from '../ChatMessagePreview/ChatMessagePreview'
 import { storageManager } from '../../../services/storage'
 import './ChatMessage.css'
 
@@ -8,7 +8,7 @@ import './ChatMessage.css'
  * Displays a single message in the chat history
  * Supports user messages, assistant messages (text/image), and loading state
  */
-const ChatMessage = ({ message, onApply, onCreate, blockType, isLastMessage, isGenerating }) => {
+const ChatMessage = ({ message, onApply, onCreate, blockType, isLastMessage, isGenerating, showApplyButton = true }) => {
     const [imageUrl, setImageUrl] = useState(null)
     const [isLoadingImage, setIsLoadingImage] = useState(false)
     const [imageLoadError, setImageLoadError] = useState(false)
@@ -107,14 +107,16 @@ const ChatMessage = ({ message, onApply, onCreate, blockType, isLastMessage, isG
                 </div>
                 {shouldShowButtons && (
                     <div className='chat-message-actions'>
-                        <button
-                            className='chat-message-action-button'
-                            onClick={() => onApply(message)}
-                            disabled={!isContentCompatible}
-                            title={!isContentCompatible ? `Cannot apply ${message.contentType} to ${blockType} block` : 'Apply to block'}
-                        >
-                            Apply to selected block
-                        </button>
+                        {showApplyButton && (
+                            <button
+                                className='chat-message-action-button'
+                                onClick={() => onApply(message)}
+                                disabled={!isContentCompatible}
+                                title={!isContentCompatible ? `Cannot apply ${message.contentType} to ${blockType} block` : 'Apply to block'}
+                            >
+                                Apply to selected block
+                            </button>
+                        )}
                         <button
                             className='chat-message-action-button'
                             onClick={() => onCreate(message)}

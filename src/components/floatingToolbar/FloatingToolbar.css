@@ -1,4 +1,4 @@
-.block-floating-toolbar {
+.floating-toolbar {
     position: absolute;
     display: flex;
     flex-direction: row;
@@ -15,7 +15,7 @@
     transition: opacity 200ms ease-in-out;
 }
 
-.block-toolbar-button {
+.floating-toolbar-button {
     width: 32px;
     height: 32px;
     display: flex;
@@ -32,59 +32,59 @@
     flex-shrink: 0;
 }
 
-.block-toolbar-button--with-text {
+.floating-toolbar-button--with-text {
     width: auto;
     padding: 0 12px;
     gap: 6px;
 }
 
-.block-toolbar-button-text {
+.floating-toolbar-button-text {
     font-size: 13px;
     font-weight: 500;
     white-space: nowrap;
     user-select: none;
 }
 
-.block-toolbar-button:hover:not(.block-toolbar-button--disabled) {
+.floating-toolbar-button:hover:not(.floating-toolbar-button--disabled) {
     background-color: #f1f5f9;
     color: #334155;
 }
 
-.block-toolbar-button:active:not(.block-toolbar-button--disabled) {
+.floating-toolbar-button:active:not(.floating-toolbar-button--disabled) {
     transform: scale(0.95);
     background-color: #e2e8f0;
 }
 
-.block-toolbar-button:focus {
+.floating-toolbar-button:focus {
     outline: none;
 }
 
-.block-toolbar-button--disabled {
+.floating-toolbar-button--disabled {
     opacity: 0.4;
     cursor: not-allowed;
 }
 
-.block-toolbar-button--primary {
+.floating-toolbar-button--primary {
     color: #3b82f6;
 }
 
-.block-toolbar-button--primary:hover:not(.block-toolbar-button--disabled) {
+.floating-toolbar-button--primary:hover:not(.floating-toolbar-button--disabled) {
     background-color: #eff6ff;
     color: #2563eb;
 }
 
-.block-toolbar-button--primary:active:not(.block-toolbar-button--disabled) {
+.floating-toolbar-button--primary:active:not(.floating-toolbar-button--disabled) {
     background-color: #dbeafe;
     color: #1d4ed8;
 }
 
-.block-toolbar-button svg {
+.floating-toolbar-button svg {
     width: 18px;
     height: 18px;
     display: block;
 }
 
-.block-toolbar-separator {
+.floating-toolbar-separator {
     width: 1px;
     height: 20px;
     background-color: #e2e8f0;

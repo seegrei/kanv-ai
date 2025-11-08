@@ -4,10 +4,11 @@ import useToolStore from '../store/useToolStore'
 import useHistoryStore from '../store/useHistoryStore'
 import useCanvasActions from '../store/useCanvasActions'
 
-const useKeyboardShortcuts = (offsetRef, zoomRef, onPaste) => {
+const useKeyboardShortcuts = (offsetRef, zoomRef, onPaste, elements, focusOnElement) => {
     const isSpacePressed = useRef(false)
 
     const selectedIds = useSelectionStore((state) => state.selectedIds)
+    const setSelectedIds = useSelectionStore((state) => state.setSelectedIds)
 
     const setToolMode = useToolStore((state) => state.setToolMode)
 
@@ -20,7 +21,8 @@ const useKeyboardShortcuts = (offsetRef, zoomRef, onPaste) => {
         duplicateSelectedElements,
         selectAllElements,
         createTextBlock,
-        createImageBlock
+        createImageBlock,
+        createChatBlock
     } = useCanvasActions()
 
     const handleDeleteElement = useCallback(() => {
@@ -37,6 +39,33 @@ const useKeyboardShortcuts = (offsetRef, zoomRef, onPaste) => {
         if (selectedIds.length === 0) return
         duplicateSelectedElements()
     }, [selectedIds, duplicateSelectedElements])
+
+    const handleSelectNextBlock = useCallback(() => {
+        if (!elements || elements.length === 0) return
+
+        // If no block is selected, select the first one
+        if (selectedIds.length === 0) {
+            const firstBlockId = elements[0].id
+            setSelectedIds([firstBlockId])
+            if (focusOnElement) {
+                setTimeout(() => focusOnElement(firstBlockId, elements), 50)
+            }
+            return
+        }
+
+        // Find currently selected block
+        const currentId = selectedIds[0]
+        const currentIndex = elements.findIndex(el => el.id === currentId)
+
+        // Select next block (wrap around to first if at end)
+        const nextIndex = currentIndex >= elements.length - 1 ? 0 : currentIndex + 1
+        const nextBlockId = elements[nextIndex].id
+
+        setSelectedIds([nextBlockId])
+        if (focusOnElement) {
+            setTimeout(() => focusOnElement(nextBlockId, elements), 50)
+        }
+    }, [elements, selectedIds, setSelectedIds, focusOnElement])
 
     useEffect(() => {
         const handlePasteEvent = (e) => {
@@ -123,6 +152,14 @@ const useKeyboardShortcuts = (offsetRef, zoomRef, onPaste) => {
                 setToolMode('pan')
             }
 
+            // Handle Tab key for selecting next block
+            if (e.key === 'Tab') {
+                if (isTyping) return
+
+                e.preventDefault()
+                handleSelectNextBlock()
+            }
+
             // Handle T key for creating text block
             if ((e.key === 't' || e.key === 'T') && !e.metaKey && !e.ctrlKey) {
                 if (isTyping) return
@@ -137,6 +174,14 @@ const useKeyboardShortcuts = (offsetRef, zoomRef, onPaste) => {
 
                 e.preventDefault()
                 createImageBlock(offsetRef, zoomRef)
+            }
+
+            // Handle C key for creating chat block
+            if ((e.key === 'c' || e.key === 'C') && !e.metaKey && !e.ctrlKey) {
+                if (isTyping) return
+
+                e.preventDefault()
+                createChatBlock(offsetRef, zoomRef)
             }
 
             // Check if Backspace is pressed and there are selected elements
@@ -202,6 +247,7 @@ const useKeyboardShortcuts = (offsetRef, zoomRef, onPaste) => {
         handleDeleteElement,
         handleCopy,
         handleDuplicate,
+        handleSelectNextBlock,
         selectAllElements,
         setToolMode,
         onPaste,
@@ -209,6 +255,7 @@ const useKeyboardShortcuts = (offsetRef, zoomRef, onPaste) => {
         redo,
         createTextBlock,
         createImageBlock,
+        createChatBlock,
         offsetRef,
         zoomRef
     ])

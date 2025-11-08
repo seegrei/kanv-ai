@@ -4,6 +4,7 @@ import { useCanvasMode } from '../../../hooks/useCanvasMode'
 import useSelectionArea from '../../../hooks/useSelectionArea'
 import useMultipleDraggable from '../../../hooks/useMultipleDraggable'
 import useViewportCulling from '../../../hooks/useViewportCulling'
+import useFocusOnElement from '../../../hooks/useFocusOnElement'
 import useElementsStore from '../../../store/useElementsStore'
 import useSelectionStore from '../../../store/useSelectionStore'
 import useHistoryStore from '../../../store/useHistoryStore'
@@ -11,13 +12,13 @@ import useCanvasActions from '../../../store/useCanvasActions'
 import useSettingsStore from '../../../store/useSettingsStore'
 import useUsageStatsStore from '../../../store/useUsageStatsStore'
 import CanvasBackground from '../CanvasBackground/CanvasBackground'
-import Toolbar from '../../toolbar/Toolbar/Toolbar'
-import QuickMenuButton from '../../ui/QuickMenuButton/QuickMenuButton'
+import Toolbar from '../../toolbar/Toolbar'
+import QuickMenuButton from '../../ui/QuickMenu/QuickMenuButton'
 import QuickMenu from '../../ui/QuickMenu/QuickMenu'
 import SettingsDialog from '../../dialogs/SettingsDialog/SettingsDialog'
 import SelectionBox from '../../blocks/SelectionBox/SelectionBox'
 import UsageStatsDisplay from '../../ui/UsageStatsDisplay/UsageStatsDisplay'
-import BlockFloatingToolbar from '../../toolbar/BlockFloatingToolbar/BlockFloatingToolbar'
+import FloatingToolbar from '../../floatingToolbar/FloatingToolbar'
 import CanvasRenderer from '../CanvasRenderer/CanvasRenderer'
 import CanvasKeyboardHandler from '../CanvasKeyboardHandler/CanvasKeyboardHandler'
 import MoveBlockCommand from '../../../commands/MoveBlockCommand'
@@ -41,7 +42,7 @@ const Canvas = () => {
 
     const executeCommand = useHistoryStore((state) => state.executeCommand)
 
-    const { createTextBlock, createImageBlock, createTextBlockAt, createImageBlockAt } = useCanvasActions()
+    const { createTextBlock, createImageBlock, createChatBlock, createTextBlockAt, createImageBlockAt } = useCanvasActions()
 
     // Runtime bounds for the selected block during drag/resize
     const [runtimeBlockBounds, setRuntimeBlockBounds] = useState(null)
@@ -72,6 +73,9 @@ const Canvas = () => {
 
     // Use viewport culling for performance with large number of blocks
     const visibleElements = useViewportCulling(elements, zoomRef, offsetRef)
+
+    // Use focus on element hook for camera centering
+    const { focusOnElement, focusOnBounds, focusOnPoint } = useFocusOnElement(offsetRef, zoomRef)
 
     const contentRef = useRef(null)
 
@@ -208,6 +212,8 @@ const Canvas = () => {
         const handleBlockCreated = ({ id }) => {
             // Select the newly created element
             setSelectedIds([id])
+            // Focus camera on the new element
+            setTimeout(() => focusOnElement(id, elements), 50)
         }
 
         eventBus.on('block:created', handleBlockCreated)
@@ -215,7 +221,32 @@ const Canvas = () => {
         return () => {
             eventBus.off('block:created', handleBlockCreated)
         }
-    }, [setSelectedIds])
+    }, [setSelectedIds, focusOnElement, elements])
+
+    // Listen for focus events from other components
+    useEffect(() => {
+        const handleFocusElement = ({ elementId, options }) => {
+            focusOnElement(elementId, elements, options)
+        }
+
+        const handleFocusBounds = ({ bounds, options }) => {
+            focusOnBounds(bounds, options)
+        }
+
+        const handleFocusPoint = ({ x, y, options }) => {
+            focusOnPoint(x, y, options)
+        }
+
+        eventBus.on('canvas:focus-element', handleFocusElement)
+        eventBus.on('canvas:focus-bounds', handleFocusBounds)
+        eventBus.on('canvas:focus-point', handleFocusPoint)
+
+        return () => {
+            eventBus.off('canvas:focus-element', handleFocusElement)
+            eventBus.off('canvas:focus-bounds', handleFocusBounds)
+            eventBus.off('canvas:focus-point', handleFocusPoint)
+        }
+    }, [focusOnElement, focusOnBounds, focusOnPoint, elements])
 
     const handleAddTextBlock = useCallback(() => {
         createTextBlock(offsetRef, zoomRef)
@@ -232,6 +263,10 @@ const Canvas = () => {
     const handleAddImageBlock = useCallback(() => {
         createImageBlock(offsetRef, zoomRef)
     }, [createImageBlock, offsetRef, zoomRef])
+
+    const handleAddChatBlock = useCallback(() => {
+        createChatBlock(offsetRef, zoomRef)
+    }, [createChatBlock, offsetRef, zoomRef])
 
     const handleElementClick = useCallback((id) => {
         setSelectedIds([id])
@@ -351,11 +386,13 @@ const Canvas = () => {
             <QuickMenu />
             <SettingsDialog />
             <UsageStatsDisplay />
-            <Toolbar onAddTextBlock={handleAddTextBlock} onAddImageBlock={handleAddImageBlock} />
+            <Toolbar onAddTextBlock={handleAddTextBlock} onAddImageBlock={handleAddImageBlock} onAddChatBlock={handleAddChatBlock} />
             <CanvasKeyboardHandler
                 offsetRef={offsetRef}
                 zoomRef={zoomRef}
                 onPaste={handlePaste}
+                elements={elements}
+                focusOnElement={focusOnElement}
             />
             <div
                 ref={canvasRef}
@@ -385,7 +422,7 @@ const Canvas = () => {
                     multipleDrag={multipleDrag}
                 >
                     {selectedBlock && (
-                        <BlockFloatingToolbar
+                        <FloatingToolbar
                             blockId={selectedBlock.id}
                             blockType={selectedBlock.type}
                             blockBounds={toolbarBounds}
