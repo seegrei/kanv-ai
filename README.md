@@ -1,17 +1,17 @@
 # kanv.ai
 
-> AI-powered infinite canvas for visual thinking and content creation
+> AI-powered infinite thought board for visual thinking and content creation
 
 [![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/sergeichemodanov/kanv-ai)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
-**kanv.ai** is an infinite canvas application that combines the freedom of unlimited workspace with powerful AI generation capabilities. Create, organize, and generate content in a seamless, keyboard-first interface.
+**kanv.ai** is an infinite thought board application that combines the freedom of unlimited workspace with powerful AI generation capabilities. Create, organize, and generate content in a seamless, keyboard-first interface.
 
 ![kanv.ai screenshot](public/kanv-ai.png)
 
 ## ✨ Key Features
 
-- **∞ Infinite Canvas** - Unlimited workspace with smooth pan & zoom
+- **∞ Infinite Boards** - Unlimited workspace with smooth pan & zoom
 - **🤖 AI Generation** - Text & image generation
 - **💬 Conversational AI** - Chat-based interface with persistent conversation history per block
 - **📝 Rich Text Editing** - Notion-like slash commands for formatting (headings, lists, code blocks, etc.)
