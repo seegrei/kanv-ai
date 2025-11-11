@@ -25,8 +25,9 @@ class BlockRegistry {
             throw new Error('Block type is required');
         }
 
+        // Skip if already registered (prevents duplicate registration)
         if (this.blocks.has(type)) {
-            logger.warn(`Block type "${type}" is already registered. Overwriting.`);
+            return
         }
 
         if (!config.component) {

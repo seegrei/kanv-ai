@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { screenToWorld } from '../utils/canvas/coordinateUtils'
+import { getEventCoordinates, isTouchEvent } from '../utils/touch/touchUtils'
 
 /**
  * Hook for handling multiple elements dragging
  * Uses RAF throttling and local state for optimal performance
+ * Supports both mouse and touch events
  */
 const useMultipleDraggable = ({
     selectedIds,
@@ -26,12 +28,23 @@ const useMultipleDraggable = ({
 
     /**
      * Start dragging multiple elements
-     * @param {MouseEvent} e - Mouse event
+     * @param {MouseEvent|TouchEvent} e - Mouse or touch event
      * @param {string|number} clickedId - ID of the element that was clicked
      */
-    const handleMouseDown = (e, clickedId) => {
-        // Only handle left mouse button
-        if (e.button !== 0) return
+    const handlePointerDown = (e, clickedId) => {
+        const isTouch = isTouchEvent(e)
+
+        // Only handle left mouse button for mouse events
+        if (!isTouch && e.button !== 0) return
+
+        // For touch events, ignore if two fingers (reserved for zoom)
+        // Check both e.touches (native) and e.nativeEvent.touches (React synthetic)
+        if (isTouch) {
+            const touches = e.touches || e.nativeEvent?.touches;
+            if (touches && touches.length === 2) {
+                return
+            }
+        }
 
         // Call the parent onMouseDown to ensure selection is maintained
         if (onMouseDown) {
@@ -42,8 +55,11 @@ const useMultipleDraggable = ({
         setIsDragging(true)
         wasDragged.current = false
 
+        // Get coordinates from mouse or touch event
+        const coords = getEventCoordinates(e)
+
         // Store initial world position
-        const worldPos = screenToWorld(e.clientX, e.clientY, offsetRef.current, zoomRef.current)
+        const worldPos = screenToWorld(coords.clientX, coords.clientY, offsetRef.current, zoomRef.current)
         setDragStartPosition(worldPos)
 
         // Store initial positions of all selected elements
@@ -83,10 +99,13 @@ const useMultipleDraggable = ({
             rafRef.current = null
         }
 
-        const handleMouseMove = (e) => {
+        const handlePointerMove = (e) => {
             wasDragged.current = true
 
-            const currentWorldPos = screenToWorld(e.clientX, e.clientY, offsetRef.current, zoomRef.current)
+            // Get coordinates from mouse or touch event
+            const coords = getEventCoordinates(e)
+
+            const currentWorldPos = screenToWorld(coords.clientX, coords.clientY, offsetRef.current, zoomRef.current)
             const deltaX = currentWorldPos.x - dragStartPosition.x
             const deltaY = currentWorldPos.y - dragStartPosition.y
 
@@ -97,7 +116,7 @@ const useMultipleDraggable = ({
             }
         }
 
-        const handleMouseUp = () => {
+        const handlePointerUp = () => {
             // Cancel any pending RAF
             if (rafRef.current) {
                 cancelAnimationFrame(rafRef.current)
@@ -151,12 +170,18 @@ const useMultipleDraggable = ({
             }, 50)
         }
 
-        window.addEventListener('mousemove', handleMouseMove)
-        window.addEventListener('mouseup', handleMouseUp)
+        window.addEventListener('mousemove', handlePointerMove)
+        window.addEventListener('mouseup', handlePointerUp)
+        window.addEventListener('touchmove', handlePointerMove, { passive: false })
+        window.addEventListener('touchend', handlePointerUp)
+        window.addEventListener('touchcancel', handlePointerUp)
 
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove)
-            window.removeEventListener('mouseup', handleMouseUp)
+            window.removeEventListener('mousemove', handlePointerMove)
+            window.removeEventListener('mouseup', handlePointerUp)
+            window.removeEventListener('touchmove', handlePointerMove)
+            window.removeEventListener('touchend', handlePointerUp)
+            window.removeEventListener('touchcancel', handlePointerUp)
 
             // Cleanup RAF on unmount
             if (rafRef.current) {
@@ -194,7 +219,9 @@ const useMultipleDraggable = ({
     return {
         isDragging,
         wasDragged,
-        handleMouseDown,
+        handlePointerDown,
+        // Legacy name for backward compatibility
+        handleMouseDown: handlePointerDown,
         localPositions
     }
 }

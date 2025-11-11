@@ -1,0 +1,23 @@
+.view-container {
+    width: calc(100% - var(--sidebar-width, 240px));
+    height: 100vh;
+    overflow: hidden;
+    margin-left: var(--sidebar-width, 240px);
+    transition: margin-left 300ms ease-in-out, width 300ms ease-in-out;
+    overflow-anchor: none;
+    overscroll-behavior: none;
+}
+
+html.settings-loading .view-container {
+    transition: none;
+}
+
+.view-container__loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    font-size: 18px;
+    color: #666;
+}

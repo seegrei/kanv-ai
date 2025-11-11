@@ -1,15 +1,13 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import App from './App'
-import registerBlocks from './core/RegisterBlocks'
-import { initializeBlockActions } from './core/blockActions.jsx'
-import './services/analytics/AnalyticsService'
+import { appInitializer } from './core/AppInitializer'
 
-registerBlocks()
-initializeBlockActions()
-
-ReactDOM.createRoot(document.getElementById('root')).render(
-    <React.StrictMode>
-        <App />
-    </React.StrictMode>
-)
+// Initialize application once before rendering
+appInitializer.init().then(() => {
+    ReactDOM.createRoot(document.getElementById('root')).render(
+        <React.StrictMode>
+            <App />
+        </React.StrictMode>
+    )
+})

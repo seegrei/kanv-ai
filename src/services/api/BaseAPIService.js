@@ -21,6 +21,11 @@ class BaseAPIService {
      * @returns {Promise<Response>}
      */
     async request(endpoint, options = {}, maxRetries = 3, requestId = null) {
+        // Validate API key
+        if (!this.apiKey || this.apiKey.trim() === '') {
+            throw new Error('No API key configured. Please set your OpenRouter API key in Settings.')
+        }
+
         const url = this.baseURL + endpoint
         let lastError = null
 
@@ -120,7 +125,7 @@ class BaseAPIService {
      */
     getHeaders() {
         return {
-            'Authorization': `Bearer ${this.apiKey}`,
+            'Authorization': `Bearer ${this.apiKey?.trim() || ''}`,
             'Content-Type': 'application/json',
             'HTTP-Referer': typeof window !== 'undefined' ? window.location.origin : '',
             'X-Title': 'kanv.ai'

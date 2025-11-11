@@ -1,6 +1,6 @@
 .toolbar {
     position: fixed;
-    left: 20px;
+    left: calc(var(--sidebar-width, 240px) + 20px);
     top: 50%;
     transform: translateY(-50%);
     display: flex;
@@ -12,6 +12,11 @@
     border-radius: 10.8px;
     padding: 7.2px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    transition: left 300ms ease-in-out;
+}
+
+html.settings-loading .toolbar {
+    transition: none;
 }
 
 .toolbar-button {

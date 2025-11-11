@@ -95,8 +95,16 @@ const useBlock = (config) => {
 
     // Store selection state before mousedown for click detection
     const handleMouseDown = useCallback((e) => {
-        // Only handle left mouse button
-        if (e.button !== 0) return;
+        // Only handle left mouse button for mouse events
+        // For touch events, e.button will be undefined, which is fine
+        if (e.button !== undefined && e.button !== 0) return;
+
+        // For touch events, ignore if two fingers (reserved for zoom)
+        // Check both e.touches (native) and e.nativeEvent.touches (React synthetic)
+        const touches = e.touches || e.nativeEvent?.touches;
+        if (touches && touches.length === 2) {
+            return;
+        }
 
         // Don't handle mousedown on special elements
         if (

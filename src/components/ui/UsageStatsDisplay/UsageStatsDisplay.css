@@ -1,9 +1,9 @@
 .usage-stats-display {
     position: fixed;
     bottom: 20px;
-    left: 20px;
     z-index: var(--z-ui);
 
+    padding: 8px 12px;
     font-size: 12px;
     color: rgba(0, 0, 0, 0.5);
     background-color: rgba(255, 255, 255, 0.8);
@@ -15,7 +15,11 @@
         'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
         sans-serif;
 
-    transition: opacity 0.2s ease;
+    transition: left 0.3s ease-in-out, opacity 0.2s ease;
+}
+
+.usage-stats-display--no-transition {
+    transition: none !important;
 }
 
 .usage-stats-display:hover {

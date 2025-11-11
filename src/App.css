@@ -16,6 +16,9 @@
     --z-ui: 900;
     --z-quick-menu: 1100;
     --z-modal: 10000;
+
+    /* Sidebar */
+    --sidebar-width: 240px;
 }
 
 * {

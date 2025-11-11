@@ -3,6 +3,8 @@
     height: 100%;
     position: relative;
     overflow: hidden;
+    overflow-anchor: none;
+    overscroll-behavior: none;
 }
 
 .canvas {
@@ -14,6 +16,11 @@
     -webkit-user-select: none;
     -moz-user-select: none;
     -ms-user-select: none;
+    touch-action: none;
+    -webkit-touch-callout: none;
+    overflow: hidden;
+    overflow-anchor: none;
+    overscroll-behavior: none;
 }
 
 .canvas-content {
@@ -29,6 +36,13 @@
 
 .canvas-content > * {
     pointer-events: auto;
+}
+
+/* Common styles for all blocks */
+.text-block,
+.image-block,
+.chat-block {
+    touch-action: none;
 }
 
 /* Common styles for all selected blocks */

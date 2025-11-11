@@ -13,20 +13,17 @@ import useSettingsStore from '../../../store/useSettingsStore'
 import useUsageStatsStore from '../../../store/useUsageStatsStore'
 import CanvasBackground from '../CanvasBackground/CanvasBackground'
 import Toolbar from '../../toolbar/Toolbar'
-import QuickMenuButton from '../../ui/QuickMenu/QuickMenuButton'
-import QuickMenu from '../../ui/QuickMenu/QuickMenu'
-import SettingsDialog from '../../dialogs/SettingsDialog/SettingsDialog'
 import SelectionBox from '../../blocks/SelectionBox/SelectionBox'
-import UsageStatsDisplay from '../../ui/UsageStatsDisplay/UsageStatsDisplay'
 import FloatingToolbar from '../../floatingToolbar/FloatingToolbar'
 import CanvasRenderer from '../CanvasRenderer/CanvasRenderer'
 import CanvasKeyboardHandler from '../CanvasKeyboardHandler/CanvasKeyboardHandler'
+import UsageStatsDisplay from '../../ui/UsageStatsDisplay/UsageStatsDisplay'
 import MoveBlockCommand from '../../../commands/MoveBlockCommand'
 import ResizeBlockCommand from '../../../commands/ResizeBlockCommand'
 import { ELEMENT } from '../../../constants'
 import { createLogger } from '../../../utils/logger'
 import { eventBus } from '../../../core/EventBus'
-import { storageManager } from '../../../services/storage'
+import { appInitializer } from '../../../core/AppInitializer'
 import './Canvas.css'
 
 const logger = createLogger('Canvas')
@@ -66,10 +63,6 @@ const Canvas = () => {
 
     // Storage state
     const [hasLoaded, setHasLoaded] = useState(false)
-    const [hasCentered, setHasCentered] = useState(false)
-
-    // Store loaded canvas state
-    const loadedCanvasStateRef = useRef(null)
 
     // Use viewport culling for performance with large number of blocks
     const visibleElements = useViewportCulling(elements, zoomRef, offsetRef)
@@ -101,109 +94,19 @@ const Canvas = () => {
 
     // Keyboard shortcuts are handled by CanvasKeyboardHandler component
 
-    // Initialize StorageManager and load saved data on mount
+    // Initialize StorageManager with canvas refs on mount
     useEffect(() => {
-        const initStorage = async () => {
-            // Initialize storage manager with refs
-            storageManager.init(offsetRef, zoomRef)
+        // Initialize storage manager with canvas refs
+        // AppInitializer handles the singleton pattern
+        appInitializer.initStorage(offsetRef, zoomRef)
 
-            // Load saved data (canvas, settings, statistics)
-            const [canvasState] = await Promise.all([
-                storageManager.load(),
-                useSettingsStore.getState().loadSettings(),
-                useUsageStatsStore.getState().loadStatistics()
-            ])
+        // Note: Board data is loaded by useBoardsStore.initialize() in ViewContainer
+        // Settings and statistics are also loaded there
 
-            if (canvasState && canvasState.offset && canvasState.zoom) {
-                loadedCanvasStateRef.current = canvasState
-            }
+        setHasLoaded(true)
 
-            setHasLoaded(true)
-        }
-
-        initStorage()
-
-        // Cleanup on unmount
-        return () => {
-            storageManager.destroy()
-        }
+        // No cleanup needed - StorageManager is a persistent singleton
     }, [])
-
-    // Helper function to get element default dimensions
-    const getElementDefaultSize = useCallback((element) => {
-        const width = element.width || (element.type === 'image' ? ELEMENT.IMAGE.DEFAULT_WIDTH : ELEMENT.TEXT_BLOCK.DEFAULT_WIDTH)
-        const height = element.height || (element.type === 'image' ? ELEMENT.IMAGE.DEFAULT_HEIGHT : ELEMENT.TEXT_BLOCK.DEFAULT_HEIGHT)
-        return { width, height }
-    }, [])
-
-    // Find element closest to origin (0, 0) - memoized to avoid recalculations
-    // Only recalculates when number of elements changes, not when they move
-    const closestElement = useMemo(() => {
-        if (elements.length === 0) return null
-
-        return elements.reduce((closest, element) => {
-            const { width: elementWidth, height: elementHeight } = getElementDefaultSize(element)
-            const elementCenterX = element.x + elementWidth / 2
-            const elementCenterY = element.y + elementHeight / 2
-            // Remove Math.sqrt for performance - comparing squared distances is sufficient
-            const distanceToOriginSquared = elementCenterX ** 2 + elementCenterY ** 2
-
-            const { width: closestWidth, height: closestHeight } = getElementDefaultSize(closest)
-            const closestCenterX = closest.x + closestWidth / 2
-            const closestCenterY = closest.y + closestHeight / 2
-            const closestDistanceSquared = closestCenterX ** 2 + closestCenterY ** 2
-
-            return distanceToOriginSquared < closestDistanceSquared ? element : closest
-        }, elements[0])
-    }, [elements.length, getElementDefaultSize])
-
-    // Center camera on element closest to origin after initial load OR restore saved canvas state
-    useEffect(() => {
-        if (!hasCentered && hasLoaded) {
-            setHasCentered(true)
-
-            // If we have saved canvas state, restore it
-            if (loadedCanvasStateRef.current) {
-                const savedState = loadedCanvasStateRef.current
-                const newOffsetX = savedState.offset.x
-                const newOffsetY = savedState.offset.y
-                const newZoom = savedState.zoom
-
-                // Update refs
-                offsetRef.current = { x: newOffsetX, y: newOffsetY }
-                zoomRef.current = newZoom
-
-                // Update CSS variables
-                if (contentRef.current) {
-                    contentRef.current.style.setProperty('--canvas-offset-x', `${newOffsetX}px`)
-                    contentRef.current.style.setProperty('--canvas-offset-y', `${newOffsetY}px`)
-                    contentRef.current.style.setProperty('--canvas-zoom', newZoom)
-                }
-
-                logger.log('Restored canvas state:', savedState)
-            } else if (closestElement) {
-                // Otherwise, center on the closest element
-                const { width: elementWidth } = getElementDefaultSize(closestElement)
-                const elementCenterX = closestElement.x + elementWidth / 2
-                const elementTopY = closestElement.y
-
-                const viewportCenterX = window.innerWidth / 2
-                const viewportCenterY = window.innerHeight * 0.2
-
-                const newOffsetX = viewportCenterX - elementCenterX * zoomRef.current
-                const newOffsetY = viewportCenterY - elementTopY * zoomRef.current
-
-                // Update offset ref
-                offsetRef.current = { x: newOffsetX, y: newOffsetY }
-
-                // Update CSS variables
-                if (contentRef.current) {
-                    contentRef.current.style.setProperty('--canvas-offset-x', `${newOffsetX}px`)
-                    contentRef.current.style.setProperty('--canvas-offset-y', `${newOffsetY}px`)
-                }
-            }
-        }
-    }, [closestElement, offsetRef, zoomRef, hasCentered, hasLoaded, setHasCentered, getElementDefaultSize])
 
     // Auto-save is now handled automatically by StorageManager
 
@@ -297,8 +200,9 @@ const Canvas = () => {
     }, [executeCommand])
 
     const handleElementMouseDown = useCallback((e, id) => {
-        // Only handle left mouse button
-        if (e.button !== 0) return
+        // Only handle left mouse button for mouse events
+        // For touch events, e.button will be undefined, which is fine
+        if (e.button !== undefined && e.button !== 0) return
 
         e.stopPropagation()
         if (!selectedIds.includes(id)) {
@@ -328,8 +232,9 @@ const Canvas = () => {
 
     // Selection box handlers for SELECT mode
     const handleSelectionMouseDown = useCallback((e) => {
-        // Only handle left mouse button
-        if (e.button !== 0) return
+        // Only handle left mouse button for mouse events
+        // For touch events, e.button will be undefined, which is fine
+        if (e.button !== undefined && e.button !== 0) return
 
         const isCanvasClick = e.target.classList.contains('canvas') ||
                               e.target.classList.contains('canvas-content') ||
@@ -382,10 +287,6 @@ const Canvas = () => {
 
     return (
         <div className='canvas-container' onContextMenu={handleContextMenu}>
-            <QuickMenuButton />
-            <QuickMenu />
-            <SettingsDialog />
-            <UsageStatsDisplay />
             <Toolbar onAddTextBlock={handleAddTextBlock} onAddImageBlock={handleAddImageBlock} onAddChatBlock={handleAddChatBlock} />
             <CanvasKeyboardHandler
                 offsetRef={offsetRef}
@@ -400,6 +301,9 @@ const Canvas = () => {
                 onMouseDown={canvasMode.handlers.onMouseDown}
                 onMouseMove={canvasMode.handlers.onMouseMove}
                 onMouseUp={canvasMode.handlers.onMouseUp}
+                onTouchStart={canvasMode.handlers.onMouseDown}
+                onTouchMove={canvasMode.handlers.onMouseMove}
+                onTouchEnd={canvasMode.handlers.onMouseUp}
                 style={{
                     cursor: canvasMode.handlers.cursor
                 }}
@@ -434,6 +338,7 @@ const Canvas = () => {
                 </CanvasRenderer>
                 <SelectionBox selectionBox={selectionBox} />
             </div>
+            <UsageStatsDisplay />
         </div>
     )
 }

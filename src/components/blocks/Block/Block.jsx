@@ -61,6 +61,7 @@ const Block = memo(forwardRef(({
             style={style}
             onClick={onClick}
             onMouseDown={onMouseDown}
+            onTouchStart={onMouseDown}
         >
             {children}
 

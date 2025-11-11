@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { createLogger } from '../utils/logger';
+import { generateId } from '../utils/generateId';
 import { storageManager } from '../services/storage';
 import { useElementsStore } from './useElementsStore';
 import { useSelectionStore } from './useSelectionStore';
@@ -61,7 +62,7 @@ export const useCanvasActions = create((set) => ({
                 const blockHeight = imageHeight + ELEMENT.IMAGE.PADDING * 2;
 
                 // Generate unique image ID
-                const imageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                const imageId = generateId();
 
                 // Save image to IndexedDB
                 await storageManager.saveImage(imageId, imageData);
@@ -162,7 +163,7 @@ export const useCanvasActions = create((set) => ({
 
             // If element is an image with imageId, clone the image in IndexedDB
             if (el.type === 'image' && el.imageId) {
-                const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                const newImageId = generateId();
                 await storageManager.cloneImage(el.imageId, newImageId);
                 newElement.imageId = newImageId;
             }
@@ -176,7 +177,7 @@ export const useCanvasActions = create((set) => ({
                     const newChatHistory = await Promise.all(chatHistory.map(async (message) => {
                         if (message.type === 'assistant' && message.contentType === 'image' && message.imageId) {
                             // Clone image
-                            const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                            const newImageId = generateId();
                             await storageManager.cloneImage(message.imageId, newImageId);
 
                             // Return message with new image ID
@@ -229,7 +230,7 @@ export const useCanvasActions = create((set) => ({
 
             // If element is an image with imageId, clone the image in IndexedDB
             if (el.type === 'image' && el.imageId) {
-                const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                const newImageId = generateId();
                 await storageManager.cloneImage(el.imageId, newImageId);
                 newElement.imageId = newImageId;
             }
@@ -243,7 +244,7 @@ export const useCanvasActions = create((set) => ({
                     const newChatHistory = await Promise.all(chatHistory.map(async (message) => {
                         if (message.type === 'assistant' && message.contentType === 'image' && message.imageId) {
                             // Clone image
-                            const newImageId = `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`;
+                            const newImageId = generateId();
                             await storageManager.cloneImage(message.imageId, newImageId);
 
                             // Return message with new image ID

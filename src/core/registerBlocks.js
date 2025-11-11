@@ -7,11 +7,19 @@ import { ELEMENT } from '../constants';
 
 const logger = createLogger('registerBlocks')
 
+let isRegistered = false
+
 /**
  * Register all built-in block types
  * This function should be called once at application startup
  */
 export function registerBlocks() {
+    // Prevent duplicate registration
+    if (isRegistered) {
+        return
+    }
+
+    isRegistered = true
     logger.log('[registerBlocks] Starting block registration...')
 
     // Register Text Block

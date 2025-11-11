@@ -29,6 +29,7 @@ const ResizeHandles = memo(({ edges = [], onResizeMouseDown, show = true }) => {
                         key={position}
                         className={`resize-handle resize-handle-${position}`}
                         onMouseDown={onResizeMouseDown(position)}
+                        onTouchStart={onResizeMouseDown(position)}
                     />
                 );
             })}
@@ -38,6 +39,7 @@ const ResizeHandles = memo(({ edges = [], onResizeMouseDown, show = true }) => {
                         key={position}
                         className={`resize-edge resize-edge-${position}`}
                         onMouseDown={onResizeMouseDown(position)}
+                        onTouchStart={onResizeMouseDown(position)}
                     />
                 );
             })}

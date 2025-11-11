@@ -105,16 +105,20 @@ export const AI = {
 
 export const STORAGE = {
     INDEXED_DB: {
-        DB_NAME: 'kanv_ai',
+        MAIN_DB_NAME: 'kanv_ai_main',
+        BOARD_DB_PREFIX: 'kanv_ai_board_',
         DB_VERSION: 1,
-        STORES: {
+        MAIN_STORES: {
+            BOARDS: 'boards',
+            SETTINGS: 'settings',
+            STATISTICS: 'statistics',
+            STATE: 'state'
+        },
+        BOARD_STORES: {
             BLOCKS: 'blocks',
             BLOCKS_CHAT_HISTORY: 'blocks_chat_history',
             CANVAS_STATE: 'canvas_state',
-            IMAGES: 'images',
-            SETTINGS: 'settings',
-            STATISTICS: 'statistics',
-            META: 'meta'
+            IMAGES: 'images'
         }
     }
 }
@@ -122,4 +126,22 @@ export const STORAGE = {
 export const STATISTICS = {
     HISTORY_DAYS: 30,
     UPDATE_DEBOUNCE: 500
+}
+
+export const SIDEBAR = {
+    WIDTH: 240,
+    COLLAPSED_WIDTH: 0,
+    TRANSITION_DURATION: 300
+}
+
+export const VIEWS = {
+    BOARD: 'board',
+    SETTINGS: 'settings',
+    STATISTICS: 'statistics'
+}
+
+export const BOARD = {
+    MIN_NAME_LENGTH: 1,
+    MAX_NAME_LENGTH: 50,
+    DEFAULT_NAME: 'New Board'
 }

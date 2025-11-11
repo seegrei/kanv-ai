@@ -10,6 +10,8 @@ import { createLogger } from '../utils/logger'
 
 const logger = createLogger('blockActions')
 
+let isInitialized = false
+
 /**
  * Initialize block actions
  * Register actions for different block types here
@@ -17,6 +19,12 @@ const logger = createLogger('blockActions')
  * This function is called once on app startup
  */
 export const initializeBlockActions = () => {
+    // Prevent duplicate initialization
+    if (isInitialized) {
+        return
+    }
+
+    isInitialized = true
     // Generate action for text and image blocks
     blockActionRegistry.registerAction({
         id: 'generate',

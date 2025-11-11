@@ -1,0 +1,337 @@
+/* Logo */
+.sidebar-logo {
+    position: fixed;
+    top: 20px;
+    left: 20px;
+    z-index: 1001;
+    font-size: 20px;
+    font-weight: 700;
+    color: #333;
+    display: flex;
+    align-items: center;
+    height: 40px;
+}
+
+/* Toggle Button */
+.sidebar-toggle {
+    position: fixed;
+    top: 20px;
+    left: calc(var(--sidebar-width, 240px) + 20px);
+    z-index: 1001;
+    width: 57.6px;
+    height: 57.6px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    border-radius: 10.8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64748b;
+    transition: left 300ms ease-in-out, background 150ms ease, color 150ms ease, transform 150ms ease;
+    outline: none;
+}
+
+.sidebar-toggle--no-transition {
+    transition: none !important;
+}
+
+.sidebar-toggle--no-transition svg {
+    transition: none !important;
+}
+
+.sidebar-toggle:hover {
+    background: #f1f5f9;
+    color: #334155;
+}
+
+.sidebar-toggle:active {
+    transform: scale(0.95);
+}
+
+.sidebar-toggle svg {
+    width: 30px;
+    height: 30px;
+    transition: all 150ms ease;
+}
+
+/* Sidebar Container */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    background: white;
+    border-right: 1px solid #e0e0e0;
+    z-index: 1000;
+    overflow: hidden;
+    display: flex;
+    flex-direction: row;
+}
+
+.sidebar--collapsed {
+    border-right: none;
+}
+
+.sidebar__content {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.sidebar__scrollable {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 80px 16px 16px 16px;
+}
+
+.sidebar__footer {
+    flex-shrink: 0;
+    border-top: 1px solid #e0e0e0;
+    padding: 16px;
+}
+
+/* Resize Handle */
+.sidebar__resize-handle {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 4px;
+    height: 100%;
+    cursor: col-resize;
+    background: transparent;
+    transition: background 0.2s ease;
+    z-index: 1;
+}
+
+.sidebar__resize-handle:hover {
+    background: #007bff;
+}
+
+/* Sidebar Section */
+.sidebar-section {
+    margin-bottom: 16px;
+}
+
+.sidebar-section__title {
+    font-size: 11px;
+    font-weight: 600;
+    color: #999;
+    letter-spacing: 0.5px;
+    margin-bottom: 8px;
+    padding: 0 8px;
+}
+
+.sidebar-section__content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+/* Sidebar Divider */
+.sidebar__divider {
+    height: 1px;
+    background: #e0e0e0;
+    margin: 16px 0;
+}
+
+/* Sidebar Button */
+.sidebar-button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    border: none;
+    background: transparent;
+    color: #333;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: all 0.15s ease;
+    text-align: left;
+    width: 100%;
+}
+
+.sidebar-button:hover {
+    background: #f5f5f5;
+}
+
+.sidebar-button--active {
+    background: #007bff;
+    color: white;
+}
+
+.sidebar-button--active:hover {
+    background: #339dff;
+}
+
+.sidebar-button__icon {
+    flex-shrink: 0;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.sidebar-button__icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.sidebar-button__label {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Boards List */
+.sidebar-boards-list {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar-board-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    position: relative;
+    font-size: 14px;
+    min-height: 38px;
+}
+
+.sidebar-board-item:hover {
+    background: #f5f5f5;
+}
+
+.sidebar-board-item--active {
+    background: #007bff;
+    color: white;
+}
+
+.sidebar-board-item--active:hover {
+    background: #339dff;
+}
+
+.sidebar-board-item__name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 14px;
+    line-height: normal;
+    padding: 4px 8px;
+}
+
+.sidebar-board-item__actions {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.15s ease, visibility 0.15s ease;
+    margin-right: 4px;
+}
+
+.sidebar-board-item:hover .sidebar-board-item__actions {
+    opacity: 1;
+    visibility: visible;
+}
+
+.sidebar-board-item__action {
+    padding: 4px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 14px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s ease;
+    color: inherit;
+}
+
+.sidebar-board-item__action svg {
+    width: 14px;
+    height: 14px;
+}
+
+.sidebar-board-item__action:hover {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-board-item--active .sidebar-board-item__action:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.sidebar-board-item__input {
+    flex: 1;
+    padding: 4px 8px;
+    margin-left: 3px;
+    margin-right: 3px;
+    border: 0;
+    border-radius: 4px;
+    font-size: 14px;
+    outline: none;
+    background: rgba(0, 0, 0, 0.05);
+    line-height: normal;
+    font-family: inherit;
+    color: inherit;
+}
+
+.sidebar-board-item--active .sidebar-board-item__input {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.sidebar-boards-list__add {
+    padding: 10px 12px;
+    border: 1px dashed #ccc;
+    background: transparent;
+    color: #666;
+    font-size: 14px;
+    cursor: pointer;
+    border-radius: 6px;
+    transition: background 0.15s ease;
+    margin-top: 4px;
+}
+
+.sidebar-boards-list__add:hover {
+    background: #f5f5f5;
+    border-color: #999;
+    color: #333;
+}
+
+/* Version */
+.sidebar__version {
+    font-size: 12px;
+    color: #999;
+    text-align: center;
+}
+
+/* Scrollbar Styling */
+.sidebar__scrollable::-webkit-scrollbar {
+    width: 6px;
+}
+
+.sidebar__scrollable::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar__scrollable::-webkit-scrollbar-thumb {
+    background: #ddd;
+    border-radius: 3px;
+}
+
+.sidebar__scrollable::-webkit-scrollbar-thumb:hover {
+    background: #ccc;
+}

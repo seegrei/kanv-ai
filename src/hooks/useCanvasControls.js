@@ -1,9 +1,11 @@
 import { useRef, useEffect, useState } from 'react'
 import { useZoom } from './useZoom'
 import { usePan } from './usePan'
+import { useCanvasViewStore } from '../store/useCanvasViewStore'
 
 /**
  * Unified hook for canvas controls
+ * Combines zoom and pan functionality with synchronized state management
  */
 export const useCanvasControls = () => {
     const canvasRef = useRef(null)
@@ -37,17 +39,13 @@ export const useCanvasControls = () => {
             const dx = e.clientX - lastMousePosRef.current.x
             const dy = e.clientY - lastMousePosRef.current.y
 
-            // Update offset ref
-            offsetRef.current = {
+            const newOffset = {
                 x: offsetRef.current.x + dx,
                 y: offsetRef.current.y + dy
             }
 
-            // Update CSS variables directly
-            if (contentRef.current) {
-                contentRef.current.style.setProperty('--canvas-offset-x', `${offsetRef.current.x}px`)
-                contentRef.current.style.setProperty('--canvas-offset-y', `${offsetRef.current.y}px`)
-            }
+            // Update store (this will trigger subscription in useZoom and update refs/CSS)
+            useCanvasViewStore.getState().setOffset(newOffset)
 
             // Emit event for viewport culling
             window.dispatchEvent(new CustomEvent('canvas:pan'))

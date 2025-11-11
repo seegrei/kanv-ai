@@ -60,6 +60,15 @@ export const useHistoryStore = create((set, get) => ({
         });
     },
 
+    // Clear history
+    clear: () => {
+        commandHistory.clear();
+        set({
+            canUndo: false,
+            canRedo: false
+        });
+    },
+
     // Get all image references from commands in history (for garbage collection)
     getImageReferences: () => {
         const imageIds = new Set();

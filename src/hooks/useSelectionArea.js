@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { screenToWorld } from '../utils/canvas/coordinateUtils'
 import { findIntersectingElements } from '../utils/canvas/intersectionUtils'
+import { getEventCoordinates, isTouchEvent } from '../utils/touch/touchUtils'
 
 const MIN_SELECTION_SIZE = 5 // Minimum size in pixels to consider as valid selection
 
@@ -8,6 +9,7 @@ const MIN_SELECTION_SIZE = 5 // Minimum size in pixels to consider as valid sele
  * Hook for managing selection area (drag-to-select functionality)
  * Handles the visual selection box and finding elements within it
  * Uses RAF throttling for optimal performance
+ * Supports both mouse and touch events
  */
 const useSelectionArea = ({ canvasRef, offsetRef, zoomRef, elements, onSelectionChange }) => {
     const [isSelecting, setIsSelecting] = useState(false)
@@ -57,8 +59,19 @@ const useSelectionArea = ({ canvasRef, offsetRef, zoomRef, elements, onSelection
      * Start selection area dragging
      */
     const handleStart = useCallback((e) => {
-        // Only allow selection with left mouse button
-        if (e.button !== 0) return
+        const isTouch = isTouchEvent(e)
+
+        // Only allow selection with left mouse button for mouse events
+        if (!isTouch && e.button !== 0) return
+
+        // For touch events, ignore if two fingers (reserved for zoom)
+        // Check both e.touches (native) and e.nativeEvent.touches (React synthetic)
+        if (isTouch) {
+            const touches = e.touches || e.nativeEvent?.touches;
+            if (touches && touches.length === 2) {
+                return
+            }
+        }
 
         const tagName = e.target.tagName?.toLowerCase()
         const isCanvasClick = e.target.classList.contains('canvas') ||
@@ -75,8 +88,11 @@ const useSelectionArea = ({ canvasRef, offsetRef, zoomRef, elements, onSelection
         const rect = canvasRef.current.getBoundingClientRect()
         canvasRectRef.current = rect
 
-        const startX = e.clientX - rect.left
-        const startY = e.clientY - rect.top
+        // Get coordinates from mouse or touch event
+        const coords = getEventCoordinates(e)
+
+        const startX = coords.clientX - rect.left
+        const startY = coords.clientY - rect.top
 
         const initialBox = {
             startX,
@@ -101,8 +117,11 @@ const useSelectionArea = ({ canvasRef, offsetRef, zoomRef, elements, onSelection
             const rect = canvasRectRef.current
             if (!rect) return
 
-            const endX = e.clientX - rect.left
-            const endY = e.clientY - rect.top
+            // Get coordinates from mouse or touch event
+            const coords = getEventCoordinates(e)
+
+            const endX = coords.clientX - rect.left
+            const endY = coords.clientY - rect.top
 
             pendingUpdateRef.current = { endX, endY }
 
@@ -182,10 +201,16 @@ const useSelectionArea = ({ canvasRef, offsetRef, zoomRef, elements, onSelection
 
         window.addEventListener('mousemove', handleMove)
         window.addEventListener('mouseup', handleEnd)
+        window.addEventListener('touchmove', handleMove, { passive: false })
+        window.addEventListener('touchend', handleEnd)
+        window.addEventListener('touchcancel', handleEnd)
 
         return () => {
             window.removeEventListener('mousemove', handleMove)
             window.removeEventListener('mouseup', handleEnd)
+            window.removeEventListener('touchmove', handleMove)
+            window.removeEventListener('touchend', handleEnd)
+            window.removeEventListener('touchcancel', handleEnd)
 
             // Cleanup RAF
             if (rafRef.current) {

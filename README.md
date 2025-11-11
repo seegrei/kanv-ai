@@ -91,10 +91,10 @@ Type `/` in any text block to access:
 ## 🛠 Tech Stack
 
 ### Core Technologies
-- **React 18.3.1** - UI framework
-- **Vite 6.0.5** - Build tool with HMR
-- **Zustand 5.0.8** - State management
-- **TipTap 3.9.1** - Rich text editor
+- **React** - UI framework
+- **Vite** - Build tool with HMR
+- **Zustand** - State management
+- **TipTap** - Rich text editor
 - **IndexedDB** - Local storage for images and data
 
 ### AI Integration

@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react'
+import { getEventCoordinates, isTouchEvent } from '../utils/touch/touchUtils'
 
 const useResizable = ({
     id,
@@ -24,7 +25,7 @@ const useResizable = ({
     const wasResized = useRef(false)
     const rafRef = useRef(null)
     const pendingUpdateRef = useRef(null)
-    // Keep height ref updated for handleMouseUp (important for horizontalOnly with auto-height)
+    // Keep height ref updated for handlePointerUp (important for horizontalOnly with auto-height)
     const heightRef = useRef(height)
 
     useEffect(() => {
@@ -66,17 +67,31 @@ const useResizable = ({
         }
     }, [horizontalOnly, maintainAspectRatio, minWidth, minHeight, padding, aspectRatio])
 
-    const handleResizeMouseDown = (corner) => (e) => {
-        // Only handle left mouse button
-        if (e.button !== 0) return
+    const handleResizePointerDown = (corner) => (e) => {
+        const isTouch = isTouchEvent(e)
+
+        // Only handle left mouse button for mouse events
+        if (!isTouch && e.button !== 0) return
+
+        // For touch events, ignore if two fingers (reserved for zoom)
+        // Check both e.touches (native) and e.nativeEvent.touches (React synthetic)
+        if (isTouch) {
+            const touches = e.touches || e.nativeEvent?.touches;
+            if (touches && touches.length === 2) {
+                return
+            }
+        }
 
         e.stopPropagation()
         e.preventDefault()
         setIsResizing(corner)
         wasResized.current = false
 
-        const mouseWorldX = (e.clientX - offsetRef.current.x) / zoomRef.current
-        const mouseWorldY = (e.clientY - offsetRef.current.y) / zoomRef.current
+        // Get coordinates from mouse or touch event
+        const coords = getEventCoordinates(e)
+
+        const mouseWorldX = (coords.clientX - offsetRef.current.x) / zoomRef.current
+        const mouseWorldY = (coords.clientY - offsetRef.current.y) / zoomRef.current
 
         const initialWidth = width || minWidth
         const initialHeight = height || minHeight
@@ -253,11 +268,14 @@ const useResizable = ({
             rafRef.current = null
         }
 
-        const handleMouseMove = (e) => {
+        const handlePointerMove = (e) => {
             wasResized.current = true
 
-            const mouseWorldX = (e.clientX - offsetRef.current.x) / zoomRef.current
-            const mouseWorldY = (e.clientY - offsetRef.current.y) / zoomRef.current
+            // Get coordinates from mouse or touch event
+            const coords = getEventCoordinates(e)
+
+            const mouseWorldX = (coords.clientX - offsetRef.current.x) / zoomRef.current
+            const mouseWorldY = (coords.clientY - offsetRef.current.y) / zoomRef.current
 
             pendingUpdateRef.current = { mouseWorldX, mouseWorldY }
 
@@ -266,7 +284,7 @@ const useResizable = ({
             }
         }
 
-        const handleMouseUp = () => {
+        const handlePointerUp = () => {
             // Cancel any pending RAF
             if (rafRef.current) {
                 cancelAnimationFrame(rafRef.current)
@@ -325,12 +343,18 @@ const useResizable = ({
             }, 0)
         }
 
-        window.addEventListener('mousemove', handleMouseMove)
-        window.addEventListener('mouseup', handleMouseUp)
+        window.addEventListener('mousemove', handlePointerMove)
+        window.addEventListener('mouseup', handlePointerUp)
+        window.addEventListener('touchmove', handlePointerMove, { passive: false })
+        window.addEventListener('touchend', handlePointerUp)
+        window.addEventListener('touchcancel', handlePointerUp)
 
         return () => {
-            window.removeEventListener('mousemove', handleMouseMove)
-            window.removeEventListener('mouseup', handleMouseUp)
+            window.removeEventListener('mousemove', handlePointerMove)
+            window.removeEventListener('mouseup', handlePointerUp)
+            window.removeEventListener('touchmove', handlePointerMove)
+            window.removeEventListener('touchend', handlePointerUp)
+            window.removeEventListener('touchcancel', handlePointerUp)
 
             // Cleanup RAF on unmount
             if (rafRef.current) {
@@ -364,7 +388,9 @@ const useResizable = ({
     return {
         isResizing,
         wasResized,
-        handleResizeMouseDown,
+        handleResizePointerDown,
+        // Legacy name for backward compatibility
+        handleResizeMouseDown: handleResizePointerDown,
         localSize,
         localPosition
     }

@@ -13,8 +13,7 @@ export const useSettingsStore = create((set, get) => {
         // Settings
         openRouterApiKey: '',
         showStatistics: true,
-        isSettingsOpen: false,
-        isQuickMenuOpen: false,
+        isSidebarCollapsed: false,
         _isLoaded: false,
         _isLoading: false,
 
@@ -24,11 +23,9 @@ export const useSettingsStore = create((set, get) => {
 
             // Skip if already loaded or currently loading
             if (state._isLoaded) {
-                logger.log('Settings already loaded, skipping')
                 return
             }
             if (state._isLoading) {
-                logger.log('Settings are currently loading, skipping duplicate request')
                 return
             }
 
@@ -44,7 +41,6 @@ export const useSettingsStore = create((set, get) => {
                         _isLoaded: true,
                         _isLoading: false
                     })
-                    logger.log('Settings loaded from IndexedDB')
                 } else {
                     set({ _isLoaded: true, _isLoading: false })
                 }
@@ -56,10 +52,11 @@ export const useSettingsStore = create((set, get) => {
 
         // Set OpenRouter API key
         setOpenRouterApiKey: async (apiKey) => {
-            set({ openRouterApiKey: apiKey })
+            // Trim the key to remove leading/trailing whitespace
+            const trimmedKey = apiKey?.trim() || ''
+            set({ openRouterApiKey: trimmedKey })
             try {
-                await storageManager.saveSetting('openRouterApiKey', apiKey)
-                logger.log('OpenRouter API key updated')
+                await storageManager.saveSetting('openRouterApiKey', trimmedKey)
             } catch (error) {
                 logger.error('Failed to save settings:', error)
             }
@@ -70,34 +67,15 @@ export const useSettingsStore = create((set, get) => {
             set({ showStatistics: show })
             try {
                 await storageManager.saveSetting('showStatistics', show)
-                logger.log(`Statistics display ${show ? 'enabled' : 'disabled'}`)
             } catch (error) {
                 logger.error('Failed to save settings:', error)
             }
         },
 
-        // Open quick menu
-        openQuickMenu: () => {
-            set({ isQuickMenuOpen: true })
-            logger.log('Quick menu opened')
-        },
-
-        // Close quick menu
-        closeQuickMenu: () => {
-            set({ isQuickMenuOpen: false })
-            logger.log('Quick menu closed')
-        },
-
-        // Open settings dialog
-        openSettings: () => {
-            set({ isSettingsOpen: true, isQuickMenuOpen: false })
-            logger.log('Settings opened')
-        },
-
-        // Close settings dialog
-        closeSettings: () => {
-            set({ isSettingsOpen: false })
-            logger.log('Settings closed')
+        // Toggle sidebar collapsed state
+        toggleSidebar: () => {
+            const newState = !get().isSidebarCollapsed
+            set({ isSidebarCollapsed: newState })
         }
     }
 })

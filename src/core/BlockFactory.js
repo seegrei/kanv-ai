@@ -1,4 +1,5 @@
-import BlockRegistry from './BlockRegistry';
+import BlockRegistry from './BlockRegistry'
+import { generateId } from '../utils/generateId'
 
 /**
  * Block Factory
@@ -11,8 +12,7 @@ class BlockFactory {
      * @returns {string} Unique ID
      */
     static generateId() {
-        const random = Math.random().toString(36).substring(2, 11);
-        return `${Date.now()}_${random}`;
+        return generateId()
     }
 
     /**

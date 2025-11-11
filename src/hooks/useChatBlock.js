@@ -1,15 +1,17 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { createLogger } from '../utils/logger'
+import { generateId } from '../utils/generateId'
 import { eventBus } from '../core/EventBus'
 import { useSettingsStore } from '../store/useSettingsStore'
 import { useSelectionStore } from '../store/useSelectionStore'
 import { useCanvasActions } from '../store/useCanvasActions'
 import { useHistoryStore } from '../store/useHistoryStore'
 import { useElementsStore } from '../store/useElementsStore'
+import { useViewStore } from '../store/useViewStore'
 import UpdateContentCommand from '../commands/UpdateContentCommand'
 import OpenRouterService from '../services/api/OpenRouterService'
 import { storageManager } from '../services/storage'
-import { AI, ELEMENT, CANVAS } from '../constants'
+import { AI, ELEMENT, CANVAS, VIEWS } from '../constants'
 
 const logger = createLogger('useChatBlock')
 
@@ -42,8 +44,8 @@ const useChatBlock = ({
     // Get API key from settings
     const openRouterApiKey = useSettingsStore((state) => state.openRouterApiKey)
 
-    // Determine if using fallback API key
-    const isUsingFallbackKey = !openRouterApiKey
+    // Determine if using fallback API key (check trimmed value)
+    const isUsingFallbackKey = !openRouterApiKey?.trim()
 
     // Local state
     const [prompt, setPrompt] = useState('')
@@ -64,7 +66,11 @@ const useChatBlock = ({
 
     // Initialize service
     useEffect(() => {
-        const apiKey = openRouterApiKey || AI.FALLBACK_API_KEY
+        // Get API key from settings or use fallback key
+        // Trim and check if key is not empty
+        const userKey = openRouterApiKey?.trim()
+        const apiKey = userKey || AI.FALLBACK_API_KEY
+
         serviceRef.current = new OpenRouterService(apiKey)
     }, [openRouterApiKey])
 
@@ -135,7 +141,7 @@ const useChatBlock = ({
 
         // Add user message
         const userMessage = {
-            id: `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            id: generateId(),
             type: 'user',
             content: promptText,
             model: model,
@@ -144,7 +150,7 @@ const useChatBlock = ({
 
         // Add loading message
         const loadingMessage = {
-            id: `${Date.now()}_${Math.random().toString(36).substring(2, 11)}`,
+            id: generateId(),
             type: 'loading',
             timestamp: Date.now()
         }
@@ -196,7 +202,7 @@ const useChatBlock = ({
                 const generatedImageData = await serviceRef.current.generateImage(promptText, model, '', localChatHistory)
 
                 // Generate unique image ID
-                const newImageId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+                const newImageId = generateId()
 
                 // Save image to IndexedDB
                 await storageManager.saveImage(newImageId, generatedImageData)
@@ -215,7 +221,22 @@ const useChatBlock = ({
             }
         } catch (error) {
             logger.error(`Error generating ${generationType}:`, error)
-            alert(`Error generating ${generationType}: ${error.message}`)
+
+            // Check if error is related to missing API key
+            if (error.message.includes('No API key configured') || error.message.includes('No auth credentials')) {
+                const goToSettings = window.confirm(
+                    'OpenRouter API key is not configured.\n\n' +
+                    'To use AI generation, you need to:\n' +
+                    '1. Get an API key from openrouter.ai/keys\n' +
+                    '2. Set it in Settings\n\n' +
+                    'Click OK to go to Settings now.'
+                )
+                if (goToSettings) {
+                    useViewStore.getState().setView(VIEWS.SETTINGS)
+                }
+            } else {
+                alert(`Error generating ${generationType}: ${error.message}`)
+            }
 
             // Remove loading message on error
             const errorHistory = newHistory.filter(msg => msg.id !== loadingMessage.id)

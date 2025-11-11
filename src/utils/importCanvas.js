@@ -3,18 +3,34 @@ import { storageManager } from '../services/storage'
 import { useElementsStore } from '../store/useElementsStore'
 import { useHistoryStore } from '../store/useHistoryStore'
 import { useSelectionStore } from '../store/useSelectionStore'
-import { getAppVersion } from './version'
 
 const logger = createLogger('ImportCanvas')
 
 /**
  * Import canvas data from JSON file
  * Imports blocks, canvas state, images, and chat histories
- * @param {File} file - JSON file to import
+ * Opens file picker dialog and imports selected file
  * @returns {Promise<void>}
  */
-export async function importCanvas(file) {
+export async function importCanvas() {
     try {
+        // Create file input
+        const input = document.createElement('input')
+        input.type = 'file'
+        input.accept = 'application/json,.json'
+
+        // Wait for file selection
+        const file = await new Promise((resolve) => {
+            input.onchange = (e) => resolve(e.target.files[0])
+            input.click()
+        })
+
+        // If no file selected, return
+        if (!file) {
+            logger.log('No file selected')
+            return
+        }
+
         logger.log('Starting canvas import...')
 
         // Read file as text
@@ -79,15 +95,15 @@ export async function importCanvas(file) {
         useElementsStore.getState().setElements(blocks)
 
         // Save to storage
-        await storageManager.provider.saveBlocks(blocks)
-        await storageManager.provider.saveCanvasState({
+        if (!storageManager.boardProvider) {
+            throw new Error('Board provider is not initialized')
+        }
+
+        await storageManager.boardProvider.saveBlocks(blocks)
+        await storageManager.boardProvider.saveCanvasState({
             offset: importData.canvas.offset,
             zoom: importData.canvas.zoom
         })
-
-        // Save version to meta (use imported version or fallback to current app version)
-        const versionToSave = importData.version || getAppVersion()
-        await storageManager.provider.saveMeta('version', versionToSave)
 
         logger.log('Import completed successfully, reloading page...')
 

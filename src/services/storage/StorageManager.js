@@ -1,20 +1,23 @@
 import { createLogger } from '../../utils/logger'
+import { generateId } from '../../utils/generateId'
 import { eventBus } from '../../core/EventBus'
 import { useElementsStore } from '../../store/useElementsStore'
+import { useCanvasViewStore } from '../../store/useCanvasViewStore'
 import { CANVAS } from '../../constants'
-import { initializeDefaultData } from '../../utils/initializeDefaultData'
-import { getAppVersion } from '../../utils/version'
+import IndexedDBProvider from './IndexedDBProvider'
 
 const logger = createLogger('StorageManager')
 
 /**
  * Storage Manager
  * Central coordinator for all save/load operations
- * Automatically tracks changes and manages auto-save
+ * Manages both main DB (boards, settings, statistics) and board-specific DBs
  */
 class StorageManager {
-    constructor(provider) {
-        this.provider = provider
+    constructor(mainProvider, initialBoardId = null) {
+        this.mainProvider = mainProvider
+        this.boardProvider = null
+        this.currentBoardId = initialBoardId
         this.autoSaveEnabled = true
         this.debounceTimer = null
         this.cleanupTimer = null
@@ -23,32 +26,84 @@ class StorageManager {
         this.isLoading = false
         this.isLoadingInitialData = false
 
-        // Canvas state refs (will be set during init)
-        this.canvasOffset = { x: 0, y: 0 }
-        this.canvasZoom = CANVAS.ZOOM.DEFAULT
+        // Refs (for backward compatibility, no longer used for state management)
+        this.offsetRef = null
+        this.zoomRef = null
         this.lastTextModel = null
         this.lastImageModel = null
 
         // Store unsubscribe functions
         this.unsubscribeStore = null
         this.eventUnsubscribers = []
+
+        // Initialize board provider if boardId is provided
+        if (initialBoardId) {
+            this.setBoardProvider(initialBoardId)
+        }
+    }
+
+    /**
+     * Set board provider for a specific board
+     * @param {string} boardId - Board ID
+     */
+    setBoardProvider(boardId) {
+        this.currentBoardId = boardId
+        this.boardProvider = new IndexedDBProvider(boardId)
+        logger.log(`Board provider set for board: ${boardId}`)
+    }
+
+    /**
+     * Close current board provider connection
+     */
+    closeBoardProvider() {
+        if (this.boardProvider && this.boardProvider.close) {
+            this.boardProvider.close()
+            logger.log('Board provider connection closed')
+        }
+    }
+
+    /**
+     * Switch to a different board
+     * @param {string} boardId - Board ID to switch to
+     * @returns {Promise<void>}
+     */
+    async switchBoard(boardId) {
+        logger.log(`Switching to board: ${boardId}`)
+
+        // Save current board before switching
+        if (this.currentBoardId && this.hasLoaded) {
+            await this.save()
+        }
+
+        // Close current board provider connection
+        this.closeBoardProvider()
+
+        // Set new board provider
+        this.setBoardProvider(boardId)
+
+        // Reset load state
+        this.hasLoaded = false
+        this.isLoading = false
+
+        logger.log(`Switched to board: ${boardId}`)
     }
 
     /**
      * Initialize storage manager
      * Sets up subscriptions to stores and events
-     * @param {Object} offsetRef - Reference to canvas offset
-     * @param {Object} zoomRef - Reference to canvas zoom
+     * Can be called multiple times safely - will re-establish subscriptions
+     * @param {Object} offsetRef - Reference to canvas offset (optional, for backward compatibility)
+     * @param {Object} zoomRef - Reference to canvas zoom (optional, for backward compatibility)
      */
     init(offsetRef, zoomRef) {
         if (this.isInitialized) {
-            logger.warn('StorageManager already initialized')
+            logger.log('StorageManager already initialized')
             return
         }
 
         logger.log('Initializing StorageManager')
 
-        // Store refs to canvas state
+        // Store refs for backward compatibility
         this.offsetRef = offsetRef
         this.zoomRef = zoomRef
 
@@ -109,12 +164,10 @@ class StorageManager {
 
         // Track canvas viewport changes (zoom/pan) via window events
         const handleCanvasZoom = () => {
-            logger.log('Canvas zoom changed, triggering auto-save')
             this.scheduleAutoSave()
         }
 
         const handleCanvasPan = () => {
-            logger.log('Canvas pan changed, triggering auto-save')
             this.scheduleAutoSave()
         }
 
@@ -138,6 +191,11 @@ class StorageManager {
             return
         }
 
+        if (!this.boardProvider) {
+            logger.log('No board provider set, skipping auto-save')
+            return
+        }
+
         // Clear existing timer
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer)
@@ -151,7 +209,7 @@ class StorageManager {
 
     /**
      * Perform auto-save
-     * Collects data from stores and saves via provider
+     * Collects data from stores and saves via board provider
      */
     async autoSave() {
         if (!this.hasLoaded) {
@@ -159,18 +217,23 @@ class StorageManager {
             return
         }
 
+        if (!this.boardProvider) {
+            logger.log('No board provider set, skipping auto-save')
+            return
+        }
+
         const { blocks, canvasState } = this.collectData()
 
         // Skip save if no blocks and no saved data
-        if (blocks.length === 0 && !(await this.provider.hasCanvasData())) {
+        if (blocks.length === 0 && !(await this.boardProvider.hasCanvasData())) {
             logger.log('Skipping auto-save: no blocks and no saved data')
             return
         }
 
         logger.log('Auto-saving', blocks.length, 'blocks')
 
-        const blocksResult = await this.provider.saveBlocks(blocks)
-        const stateResult = await this.provider.saveCanvasState(canvasState)
+        const blocksResult = await this.boardProvider.saveBlocks(blocks)
+        const stateResult = await this.boardProvider.saveCanvasState(canvasState)
 
         if (blocksResult.success && stateResult.success) {
             logger.log('Auto-save successful')
@@ -222,7 +285,7 @@ class StorageManager {
     }
 
     /**
-     * Load data from storage
+     * Load data from storage for current board
      * Restores blocks and canvas state
      * @returns {Promise<Object|null>} Loaded canvas state or null
      */
@@ -237,85 +300,49 @@ class StorageManager {
             return null
         }
 
+        if (!this.boardProvider) {
+            logger.error('No board provider set, cannot load')
+            return null
+        }
+
         // Mark as loading
         this.isLoading = true
         logger.log('Loading data from storage')
 
         try {
-            // Check if this is the first launch by checking meta version
-            let version = await this.provider.loadMeta('version')
-            const isFirstLaunch = !version
+            const blocks = await this.boardProvider.loadBlocks()
+            const canvasState = await this.boardProvider.loadCanvasState()
 
-            if (isFirstLaunch) {
-                // First launch - initialize with default data
-                logger.log('First launch detected (no version in meta), initializing default data')
+            // Set flag to prevent auto-save during initial load
+            this.isLoadingInitialData = true
 
-                const defaultData = await initializeDefaultData()
+            // Restore blocks to store (even if empty array)
+            useElementsStore.getState().setElements(blocks || [])
 
-                if (defaultData && defaultData.elements) {
-                    // Set flag to prevent auto-save during initial load
-                    this.isLoadingInitialData = true
+            // Clear flag after loading
+            this.isLoadingInitialData = false
 
-                    // Load default blocks to store
-                    useElementsStore.getState().setElements(defaultData.elements)
+            logger.log('Loaded', (blocks || []).length, 'blocks from storage')
 
-                    // Clear flag after loading
-                    this.isLoadingInitialData = false
+            // Load models from main DB state (not board-specific)
+            this.lastTextModel = await this.mainProvider.loadState('lastTextModel')
+            this.lastImageModel = await this.mainProvider.loadState('lastImageModel')
 
-                    // Save version to meta
-                    version = getAppVersion()
-                    await this.provider.saveMeta('version', version)
-                    logger.log('Initialized version in meta:', version)
-
-                    logger.log('Initialized with', defaultData.elements.length, 'default blocks')
-
-                    // Mark as loaded
-                    this.hasLoaded = true
-                    this.isLoading = false
-
-                    // Save default blocks to database immediately
-                    logger.log('Saving default blocks to database')
-                    await this.autoSave()
-
-                    // Return canvas state for restoration
-                    return defaultData.canvasState || null
-                }
-
-                // If initialization failed, just mark as loaded
-                this.hasLoaded = true
-                this.isLoading = false
-                return null
+            // Restore canvas view state to store
+            if (canvasState && canvasState.offset && canvasState.zoom) {
+                logger.log('Restoring canvas state to store:', canvasState)
+                useCanvasViewStore.getState().setCanvasView(canvasState)
             } else {
-                // Not first launch - load saved data
-                logger.log('Loading saved data (version in meta:', version, ')')
-
-                const blocks = await this.provider.loadBlocks()
-                const canvasState = await this.provider.loadCanvasState()
-
-                // Set flag to prevent auto-save during initial load
-                this.isLoadingInitialData = true
-
-                // Restore blocks to store (even if empty array)
-                useElementsStore.getState().setElements(blocks || [])
-
-                // Clear flag after loading
-                this.isLoadingInitialData = false
-
-                logger.log('Loaded', (blocks || []).length, 'blocks from storage')
-
-                // Restore models from canvas state
-                if (canvasState) {
-                    this.lastTextModel = canvasState.lastTextModel || null
-                    this.lastImageModel = canvasState.lastImageModel || null
-                }
-
-                // Mark as loaded
-                this.hasLoaded = true
-                this.isLoading = false
-
-                // Return canvas state for restoration
-                return canvasState || null
+                logger.log('No saved canvas state, using defaults')
+                useCanvasViewStore.getState().resetToDefaults()
             }
+
+            // Mark as loaded
+            this.hasLoaded = true
+            this.isLoading = false
+
+            // Return canvas state for restoration
+            return canvasState || null
         } catch (error) {
             logger.error('Failed to load data:', error)
             this.isLoadingInitialData = false
@@ -331,11 +358,15 @@ class StorageManager {
      * @returns {Promise<Object>} Save result
      */
     async save() {
+        if (!this.boardProvider) {
+            return { success: false, error: 'No board provider set' }
+        }
+
         const { blocks, canvasState } = this.collectData()
         logger.log('Manual save:', blocks.length, 'blocks')
 
-        const blocksResult = await this.provider.saveBlocks(blocks)
-        const stateResult = await this.provider.saveCanvasState(canvasState)
+        const blocksResult = await this.boardProvider.saveBlocks(blocks)
+        const stateResult = await this.boardProvider.saveCanvasState(canvasState)
 
         if (blocksResult.success && stateResult.success) {
             logger.log('Manual save successful')
@@ -353,13 +384,11 @@ class StorageManager {
     collectData() {
         const blocks = useElementsStore.getState().elements
 
-        // Get current canvas state from refs if available
-        const canvasState = {
-            offset: this.offsetRef?.current || this.canvasOffset,
-            zoom: this.zoomRef?.current || this.canvasZoom,
-            lastTextModel: this.lastTextModel,
-            lastImageModel: this.lastImageModel
-        }
+        // Get current canvas state from store (single source of truth)
+        const { offset, zoom } = useCanvasViewStore.getState()
+        const canvasState = { offset, zoom }
+
+        logger.log('collectData - canvasState:', canvasState)
 
         return {
             blocks,
@@ -368,17 +397,18 @@ class StorageManager {
     }
 
     /**
-     * Clear all saved canvas data
+     * Clear all saved canvas data for current board
      * @returns {Promise<Object>} Clear result
      */
     async clearData() {
+        if (!this.boardProvider) {
+            return { success: false, error: 'No board provider set' }
+        }
+
         logger.log('Clearing saved canvas data')
-        const result = await this.provider.clearCanvasData()
+        const result = await this.boardProvider.clearCanvasData()
 
         if (result.success) {
-            // Reset models in memory
-            this.lastTextModel = null
-            this.lastImageModel = null
             logger.log('Canvas data cleared successfully')
         } else {
             logger.error('Failed to clear canvas data:', result.error)
@@ -387,7 +417,7 @@ class StorageManager {
         return result
     }
 
-    // Images methods
+    // Images methods (delegated to board provider)
 
     /**
      * Convert data URL to Blob
@@ -437,9 +467,13 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async saveImage(id, dataUrl) {
+        if (!this.boardProvider) {
+            return false
+        }
+
         try {
             const blob = await this.dataUrlToBlob(dataUrl)
-            return await this.provider.saveImage(id, blob)
+            return await this.boardProvider.saveImage(id, blob)
         } catch (error) {
             logger.error('Error saving image:', error)
             return false
@@ -452,8 +486,12 @@ class StorageManager {
      * @returns {Promise<string|null>} Blob URL or null if not found
      */
     async loadImage(id) {
+        if (!this.boardProvider) {
+            return null
+        }
+
         try {
-            const blob = await this.provider.loadImage(id)
+            const blob = await this.boardProvider.loadImage(id)
             if (blob) {
                 return URL.createObjectURL(blob)
             }
@@ -470,8 +508,12 @@ class StorageManager {
      * @returns {Promise<string|null>} Data URL or null if not found
      */
     async loadImageAsDataUrl(id) {
+        if (!this.boardProvider) {
+            return null
+        }
+
         try {
-            const blob = await this.provider.loadImage(id)
+            const blob = await this.boardProvider.loadImage(id)
             if (blob) {
                 return await this.blobToDataUrl(blob)
             }
@@ -488,7 +530,10 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async deleteImage(id) {
-        return await this.provider.deleteImage(id)
+        if (!this.boardProvider) {
+            return false
+        }
+        return await this.boardProvider.deleteImage(id)
     }
 
     /**
@@ -498,7 +543,10 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async cloneImage(sourceId, targetId) {
-        return await this.provider.cloneImage(sourceId, targetId)
+        if (!this.boardProvider) {
+            return false
+        }
+        return await this.boardProvider.cloneImage(sourceId, targetId)
     }
 
     /**
@@ -508,9 +556,13 @@ class StorageManager {
      * @returns {Promise<string|null>} New image ID or null if failed
      */
     async duplicateImage(sourceId) {
+        if (!this.boardProvider) {
+            return null
+        }
+
         try {
-            const newId = `${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
-            const success = await this.provider.cloneImage(sourceId, newId)
+            const newId = generateId()
+            const success = await this.boardProvider.cloneImage(sourceId, newId)
             if (success) {
                 logger.log('Duplicated image:', sourceId, '->', newId)
                 return newId
@@ -527,7 +579,10 @@ class StorageManager {
      * @returns {Promise<Array<string>>} Array of image IDs
      */
     async getAllImageIds() {
-        return await this.provider.getAllImageIds()
+        if (!this.boardProvider) {
+            return []
+        }
+        return await this.boardProvider.getAllImageIds()
     }
 
     /**
@@ -540,7 +595,7 @@ class StorageManager {
         }
     }
 
-    // Settings methods
+    // Settings methods (delegated to main provider)
 
     /**
      * Save a single setting
@@ -549,7 +604,7 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async saveSetting(key, value) {
-        return await this.provider.saveSetting(key, value)
+        return await this.mainProvider.saveSetting(key, value)
     }
 
     /**
@@ -557,10 +612,10 @@ class StorageManager {
      * @returns {Promise<Object>} Settings object
      */
     async loadAllSettings() {
-        return await this.provider.loadAllSettings()
+        return await this.mainProvider.loadAllSettings()
     }
 
-    // Statistics methods
+    // Statistics methods (delegated to main provider)
 
     /**
      * Save daily statistics
@@ -569,7 +624,7 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async saveDailyStats(date, stats) {
-        return await this.provider.saveDailyStats(date, stats)
+        return await this.mainProvider.saveDailyStats(date, stats)
     }
 
     /**
@@ -577,7 +632,7 @@ class StorageManager {
      * @returns {Promise<Object>} Statistics object with dates as keys
      */
     async loadAllStatistics() {
-        return await this.provider.loadAllStatistics()
+        return await this.mainProvider.loadAllStatistics()
     }
 
     /**
@@ -586,7 +641,7 @@ class StorageManager {
      * @returns {Promise<Object|null>} Statistics object or null if not found
      */
     async loadDailyStats(date) {
-        return await this.provider.loadDailyStats(date)
+        return await this.mainProvider.loadDailyStats(date)
     }
 
     /**
@@ -595,28 +650,7 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async deleteDailyStats(date) {
-        return await this.provider.deleteDailyStats(date)
-    }
-
-    // Meta methods
-
-    /**
-     * Save meta value
-     * @param {string} key - Meta key
-     * @param {any} value - Value to save
-     * @returns {Promise<boolean>} Success status
-     */
-    async saveMeta(key, value) {
-        return await this.provider.saveMeta(key, value)
-    }
-
-    /**
-     * Load meta value
-     * @param {string} key - Meta key
-     * @returns {Promise<any|null>} Meta value or null if not found
-     */
-    async loadMeta(key) {
-        return await this.provider.loadMeta(key)
+        return await this.mainProvider.deleteDailyStats(date)
     }
 
     // Model selection methods
@@ -631,12 +665,12 @@ class StorageManager {
         try {
             if (type === 'text') {
                 this.lastTextModel = model
+                await this.mainProvider.saveState('lastTextModel', model)
             } else if (type === 'image') {
                 this.lastImageModel = model
+                await this.mainProvider.saveState('lastImageModel', model)
             }
 
-            // Trigger auto-save to persist models
-            this.scheduleAutoSave()
             return true
         } catch (error) {
             logger.error(`Error saving last ${type} model:`, error)
@@ -661,14 +695,11 @@ class StorageManager {
                 return null
             }
 
-            // Otherwise load from storage
-            const canvasState = await this.provider.loadCanvasState()
-            if (!canvasState) return null
-
+            // Otherwise load from main DB state
             if (type === 'text') {
-                return canvasState.lastTextModel || null
+                return await this.mainProvider.loadState('lastTextModel')
             } else if (type === 'image') {
-                return canvasState.lastImageModel || null
+                return await this.mainProvider.loadState('lastImageModel')
             }
             return null
         } catch (error) {
@@ -677,7 +708,7 @@ class StorageManager {
         }
     }
 
-    // Block chat history methods
+    // Block chat history methods (delegated to board provider)
 
     /**
      * Get chat history for a block
@@ -685,7 +716,10 @@ class StorageManager {
      * @returns {Promise<Array>} Array of messages
      */
     async getBlockChatHistory(blockId) {
-        return await this.provider.getBlockChatHistory(blockId)
+        if (!this.boardProvider) {
+            return []
+        }
+        return await this.boardProvider.getBlockChatHistory(blockId)
     }
 
     /**
@@ -695,7 +729,10 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async saveBlockChatHistory(blockId, messages) {
-        return await this.provider.saveBlockChatHistory(blockId, messages)
+        if (!this.boardProvider) {
+            return false
+        }
+        return await this.boardProvider.saveBlockChatHistory(blockId, messages)
     }
 
     /**
@@ -704,7 +741,10 @@ class StorageManager {
      * @returns {Promise<boolean>} Success status
      */
     async clearBlockChatHistory(blockId) {
-        return await this.provider.clearBlockChatHistory(blockId)
+        if (!this.boardProvider) {
+            return false
+        }
+        return await this.boardProvider.clearBlockChatHistory(blockId)
     }
 
     /**
@@ -713,7 +753,10 @@ class StorageManager {
      * @returns {Promise<boolean>} True if has history
      */
     async hasBlockChatHistory(blockId) {
-        return await this.provider.hasBlockChatHistory(blockId)
+        if (!this.boardProvider) {
+            return false
+        }
+        return await this.boardProvider.hasBlockChatHistory(blockId)
     }
 
     /**
@@ -721,37 +764,58 @@ class StorageManager {
      * @returns {Promise<Array<string>>} Array of image IDs
      */
     async getAllChatHistoryImageIds() {
-        return await this.provider.getAllChatHistoryImageIds()
+        if (!this.boardProvider) {
+            return []
+        }
+        return await this.boardProvider.getAllChatHistoryImageIds()
     }
 
     /**
      * Cleanup
-     * Unsubscribes from all listeners
+     * Clears timers and unsubscribes from listeners
+     * Note: Does NOT reset isInitialized to support React StrictMode
      */
     destroy() {
-        logger.log('Destroying StorageManager')
+        logger.log('Cleaning up StorageManager subscriptions')
 
         // Clear debounce timer
         if (this.debounceTimer) {
             clearTimeout(this.debounceTimer)
+            this.debounceTimer = null
         }
 
         // Clear cleanup timer
         if (this.cleanupTimer) {
             clearInterval(this.cleanupTimer)
+            this.cleanupTimer = null
         }
 
         // Unsubscribe from store
         if (this.unsubscribeStore) {
             this.unsubscribeStore()
+            this.unsubscribeStore = null
         }
 
         // Unsubscribe from events
         this.eventUnsubscribers.forEach(unsub => unsub())
         this.eventUnsubscribers = []
 
+        // Note: Keep isInitialized as true to prevent re-initialization
+        // This allows React StrictMode to work correctly
+        logger.log('StorageManager subscriptions cleaned up')
+    }
+
+    /**
+     * Full reset - use only for testing or complete teardown
+     * @private
+     */
+    _reset() {
+        this.destroy()
         this.isInitialized = false
-        logger.log('StorageManager destroyed')
+        this.hasLoaded = false
+        this.isLoading = false
+        this.isLoadingInitialData = false
+        logger.log('StorageManager fully reset')
     }
 }
 
