@@ -2,10 +2,12 @@
 
 > AI-powered infinite canvas for visual thinking and content creation
 
-[![Version](https://img.shields.io/badge/version-0.2.0-blue.svg)](https://github.com/sergeichemodanov/kanv-ai)
+[![Version](https://img.shields.io/badge/version-0.3.0-blue.svg)](https://github.com/sergeichemodanov/kanv-ai)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 **kanv.ai** is an infinite canvas application that combines the freedom of unlimited workspace with powerful AI generation capabilities. Create, organize, and generate content in a seamless, keyboard-first interface.
+
+![kanv.ai screenshot](public/kanv-ai.png)
 
 ## ✨ Key Features
 
@@ -116,7 +118,3 @@ Contributions are welcome!
 ## 📄 License
 
 MIT License - feel free to use this project for personal or commercial purposes.
-
----
-
-Built with ❤️
